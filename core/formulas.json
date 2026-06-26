@@ -1,0 +1,25 @@
+{
+  "liquidity": {
+    "current_ratio": "current_assets / current_liabilities",
+    "quick_ratio": "(current_assets - inventory) / current_liabilities"
+  },
+  "leverage": {
+    "debt_to_equity": "total_debt / shareholders_equity",
+    "icr": "ebit / interest_expense",
+    "debt_to_ebitda": "total_debt / ebitda"
+  },
+  "profitability": {
+    "gross_margin": "((revenue - cogs) / revenue) * 100",
+    "ebitda_margin": "(ebitda / revenue) * 100",
+    "net_margin": "(net_income / revenue) * 100",
+    "roe": "(net_income / shareholders_equity) * 100",
+    "roa": "(net_income / total_assets) * 100"
+  },
+  "advanced_fdd": {
+    "fcf": "operating_cash_flow - capital_expenditures",
+    "fcf_margin": "((operating_cash_flow - capital_expenditures) / revenue) * 100",
+    "working_capital_turnover": "revenue / working_capital",
+    "asset_turnover": "revenue / total_assets",
+    "equity_multiplier": "total_assets / shareholders_equity"
+  }
+}
