@@ -2,3 +2,4 @@ core/agents/*.py
 !core/agents/analysis_agent.py
 tests/
 demo_runner.py
+.env
