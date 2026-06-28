@@ -1,66 +1,1379 @@
+for narrative_analysis .py
+# 📊 SEC Filing Hybrid Retrieval & Due Diligence Agent
+
+An AI-powered **Retrieval-Augmented Generation (RAG)** system that performs **qualitative financial due diligence** on SEC filings stored in PostgreSQL.
+
+Instead of sending an entire SEC filing to an LLM, the system first retrieves the most relevant filing sections using PostgreSQL Full-Text Search and then asks a Groq-hosted LLM to synthesize an investment-grade analysis.
+
+---
+
+# Architecture
+
+```mermaid
+flowchart TD
+
+A[User enters Company Ticker]
+B[30 Due Diligence Dimensions]
+C[Hybrid PostgreSQL Retrieval]
+D[Relevant SEC Filing Chunks]
+E[Prompt Construction]
+F[Groq LLM]
+G[Investment Analysis]
+
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+F --> G
+```
+
+---
+
+# Project Goal
+
+Financial analysts spend hours reading hundreds of pages of SEC filings to answer questions like:
+
+- Does the company have pricing power?
+- Are there governance concerns?
+- Is management executing acquisitions effectively?
+- What are the company's major supply chain risks?
+- How concentrated are manufacturing facilities?
+- Has management changed its risk narrative?
+
+This project automates that workflow by:
+
+1. Retrieving only the relevant filing sections.
+2. Providing those sections to a Large Language Model.
+3. Producing concise investment-focused due diligence reports.
+
+---
+
+# Features
+
+- PostgreSQL Full-Text Search
+- Hybrid keyword retrieval
+- Context-aware prompt generation
+- Groq GPT-OSS-120B integration
+- 30 predefined investment due diligence dimensions
+- SEC filing citation support
+- Evidence-grounded responses
+- Low hallucination design
+
+---
+
+# Folder Structure
+
+```
+project/
+│
+├── main.py
+├── README.md
+│
+├── PostgreSQL
+│     └── financial_due_diligence_chunks
+│
+└── Groq API
+```
+
+---
+
+# Database Schema
+
+The project expects a PostgreSQL table named
+
+```
+financial_due_diligence_chunks
+```
+
+Important columns:
+
+| Column | Description |
+|----------|------------|
+| ticker | Company ticker |
+| filing_date | SEC filing date |
+| filing_type | 10-K, 10-Q etc. |
+| sec_item | Filing section |
+| original_chunk | Raw filing text |
+| summary_bullet_points | Summary of chunk |
+
+---
+
+# Workflow
+
+```mermaid
+flowchart LR
+
+A[Ticker]
+B[Retrieve Matching Chunks]
+C[Rank using PostgreSQL FTS]
+D[Build Prompt]
+E[Groq LLM]
+F[Investment Analysis]
+
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+```
+
+---
+
+# How Retrieval Works
+
+The retrieval engine searches both
+
+- `original_chunk`
+- `summary_bullet_points`
+
+using PostgreSQL Full-Text Search.
+
+Ranking is performed using
+
+```sql
+ts_rank_cd()
+```
+
+Search vectors are built using
+
+```sql
+to_tsvector()
+```
+
+Queries use
+
+```sql
+plainto_tsquery()
+```
+
+with an additional fallback
+
+```sql
+ILIKE
+```
+
+to capture partial matches.
+
+---
+
+# Retrieval Strategy
+
+Each investment dimension contains two prompts.
+
+## 1. Retrieval Statement
+
+Designed specifically for PostgreSQL search.
+
+Example
+
+```
+Pricing Power Execution:
+How does management manage inflation?
+```
+
+Contains richer search vocabulary for better retrieval.
+
+---
+
+## 2. Due Diligence Question
+
+Designed specifically for the LLM.
+
+Example
+
+```
+Explain management's pricing strategy and customer elasticity.
+```
+
+Contains reasoning-oriented language.
+
+Keeping retrieval and reasoning prompts separate improves overall accuracy.
+
+---
+
+# Execution Pipeline
+
+```mermaid
+sequenceDiagram
+
+participant User
+participant PostgreSQL
+participant Groq
+
+User->>PostgreSQL: Enter Company Ticker
+
+loop 30 Due Diligence Dimensions
+
+PostgreSQL->>PostgreSQL: Retrieve Top Filing Chunks
+
+PostgreSQL-->>User: Retrieved Context
+
+User->>Groq: Send Prompt + Context
+
+Groq-->>User: Due Diligence Analysis
+
+end
+```
+
+---
+
+# Main Components
+
+## Configuration
+
+Contains
+
+- PostgreSQL credentials
+- Groq API key
+- model selection
+
+---
+
+## Hybrid Retrieval Engine
+
+Function
+
+```python
+hybrid_db_retrieval()
+```
+
+Responsibilities
+
+- Query PostgreSQL
+- Rank SEC chunks
+- Return highest scoring filing sections
+
+---
+
+## Prompt Builder
+
+Creates structured context for the LLM.
+
+Each retrieved document is formatted as
+
+```
+Context Document
+
+Filed:
+2024-09-30
+
+Form:
+10-K
+
+Section:
+Item 7
+
+Executive Summary
+
+...
+
+Raw Filing Context
+
+...
+```
+
+---
+
+## Groq Generation
+
+Function
+
+```python
+generate_diligence_analysis()
+```
+
+The LLM receives
+
+- Due diligence question
+- Retrieved SEC evidence
+- Filing metadata
+
+The model is instructed to
+
+- cite filing dates
+- cite SEC sections
+- avoid hallucinations
+- admit missing evidence
+- remain objective
+
+Temperature
+
+```
+0.15
+```
+
+is intentionally low for deterministic financial analysis.
+
+---
+
+# Due Diligence Dimensions
+
+The project evaluates **30 qualitative investment dimensions**, including
+
+- Strategic Moat
+- Consumer Behavior
+- Pricing Power
+- Market Expansion
+- M&A Integration
+- FX Exposure
+- Executive Compensation
+- Human Capital
+- Succession Planning
+- Board Governance
+- Related Party Transactions
+- ESG Strategy
+- Supply Chain Risk
+- Manufacturing Concentration
+- Procurement Risk
+- Patent Exposure
+- Vendor Lock-in
+- Geopolitical Risk
+- Litigation
+- Data Privacy
+- Environmental Liability
+- Tax Risk
+- Internal Controls
+- Anti-Bribery Compliance
+- Subsequent Events
+- Risk Narrative Evolution
+- Product Recalls
+- Capital Allocation
+- Debt Covenants
+- Labor Relations
+
+---
+
+# Example Console Output
+
+```
+=========================================================
+SEC Filing Hybrid Retrieval & Analysis Agent
+=========================================================
+
+Ticker:
+AAPL
+
+-----------------------------------------------
+
+Dimension 12
+
+Retrieved Chunks:
+17
+
+Analysis:
+
+Management continues expanding pricing power while
+maintaining stable customer demand.
+
+Evidence:
+2024-09-30
+Item 7
+
+...
+```
+
+---
+
+# Technology Stack
+
+| Component | Technology |
+|------------|------------|
+| Language | Python |
+| Database | PostgreSQL |
+| Retrieval | PostgreSQL Full-Text Search |
+| API | Groq |
+| LLM | GPT-OSS-120B |
+| Driver | psycopg2 |
+
+---
+
+# Why This Architecture?
+
+Instead of embedding entire SEC filings into vectors, this project uses PostgreSQL's built-in search engine.
+
+Advantages
+
+- No vector database required
+- Fast retrieval
+- Deterministic ranking
+- Explainable search results
+- Easy deployment
+- Lower infrastructure cost
+
+---
+
+# Current Limitations
+
+- No semantic vector retrieval
+- Sequential processing
+- No report export
+- No confidence scoring
+- Terminal-only interface
+- Fixed 30 due diligence dimensions
+
+---
+
+# Future Improvements
+
+- pgvector integration
+- Hybrid BM25 + Embeddings retrieval
+- Parallel execution
+- PDF report generation
+- HTML dashboard
+- Confidence scoring
+- Interactive UI
+- Automatic SEC filing updates
+
+---
+
+# Design Philosophy
+
+This project follows a **Retrieval-Augmented Generation (RAG)** architecture where:
+
+- PostgreSQL serves as the retrieval engine.
+- SEC filings act as the knowledge base.
+- Groq performs qualitative reasoning.
+- The LLM is constrained to retrieved evidence, minimizing hallucinations.
+
+The objective is to automate institutional-quality financial due diligence while maintaining traceability to the original SEC filings.
+
+----------------------------------------------------------------------------------------------------------------
+the ingestion agent :
+# 📥 SEC Filing Ingestion & Knowledge Base Builder
+
+An automated SEC filing ingestion pipeline that downloads filings directly from the SEC EDGAR system, extracts important filing sections, summarizes them using a Qwen LLM hosted on Modal, and stores both the original text and summaries inside PostgreSQL for downstream Retrieval-Augmented Generation (RAG).
+
+---
+
+# Architecture
+
+```mermaid
+flowchart TD
+
+A[Company Ticker]
+B[EDGAR API via edgartools]
+C[Download SEC Filings]
+D[Extract Filing Sections]
+E[Categorize into Due Diligence Segments]
+F[Chunk Large Documents]
+G[Qwen Summarizer on Modal]
+H[Store in PostgreSQL]
+
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+F --> G
+G --> H
+```
+
+---
+
+# Project Goal
+
+Large SEC filings often contain hundreds of pages of disclosures.
+
+Instead of storing entire filings as a single document, this pipeline prepares the filings for AI retrieval by:
+
+- Downloading SEC filings
+- Extracting important filing sections
+- Organizing them into due diligence categories
+- Chunking long documents
+- Generating concise summaries
+- Saving everything into PostgreSQL
+
+The generated database becomes the knowledge base used by downstream Retrieval-Augmented Generation systems.
+
+---
+
+# Features
+
+- Automatic SEC filing download
+- Native section extraction using `edgartools`
+- Due diligence segmentation
+- Configurable text chunking
+- AI-generated summaries via Qwen
+- Batch PostgreSQL insertion
+- Supports 10-K, 10-Q and DEF 14A filings
+- Ready for RAG applications
+
+---
+
+# Architecture Overview
+
+```mermaid
+sequenceDiagram
+
+participant User
+participant Edgar
+participant Qwen
+participant PostgreSQL
+
+User->>Edgar: Company Ticker
+
+Edgar-->>User: SEC Filings
+
+User->>User: Extract Sections
+
+User->>User: Categorize
+
+User->>User: Chunk Text
+
+loop Every Chunk
+
+User->>Qwen: Summarize
+
+Qwen-->>User: Bullet Summary
+
+end
+
+User->>PostgreSQL: Save Original + Summary
+```
+
+---
+
+# Pipeline Workflow
+
+```mermaid
+flowchart LR
+
+Ticker
+
+--> Download Filings
+
+--> Extract SEC Items
+
+--> Categorize
+
+--> Chunk
+
+--> Summarize
+
+--> Database
+```
+
+---
+
+# Supported SEC Forms
+
+The pipeline automatically downloads:
+
+| Filing | Time Window |
+|----------|------------|
+| 10-K | Last 2 Years |
+| 10-Q | Last 1 Year |
+| DEF 14A | Last 1 Year |
+
+---
+
+# Extracted SEC Sections
+
+The following sections are extracted from each filing:
+
+| SEC Item | Description |
+|----------|------------|
+| Item 1 | Business |
+| Item 1A | Risk Factors |
+| Item 2 | Properties |
+| Item 3 | Legal Proceedings |
+| Item 7 | MD&A |
+| Item 8 | Financial Statements |
+| Item 9A | Internal Controls |
+
+These sections provide the majority of qualitative information required for investment due diligence.
+
+---
+
+# Due Diligence Segmentation
+
+Instead of storing SEC sections directly, they are reorganized into six business-focused categories.
+
+| Segment | Typical Sources |
+|-----------|----------------|
+| Company & Operational Risks | Item 1A, Item 2, Item 9A |
+| Supply Chain & Infrastructure Health | Item 1 |
+| Consumer Health & Market Share | Item 1 |
+| Legal & Regulatory Risks | Item 3 |
+| Financial Performance & Solvency | Item 7, Item 8 |
+| Corporate Governance & Structure | DEF 14A |
+
+This allows downstream retrieval to search by business concepts rather than SEC filing structure.
+
+---
+
+# Text Chunking
+
+Long filing sections are divided into smaller overlapping chunks before summarization.
+
+Default configuration:
+
+```python
+Maximum Chunk Size : 4000 characters
+
+Overlap            : 400 characters
+```
+
+Advantages:
+
+- Better LLM context utilization
+- Higher retrieval accuracy
+- Reduced summarization latency
+
+---
+
+# AI Summarization
+
+Each chunk is sent to a Qwen summarization model hosted on Modal.
+
+```
+Raw Filing Chunk
+
+↓
+
+Qwen Summarizer
+
+↓
+
+Executive Summary
+```
+
+Both the original text and summarized version are preserved.
+
+---
+
+# Database Schema
+
+Each generated chunk is stored in
+
+```
+financial_due_diligence_chunks
+```
+
+Database columns
+
+| Column | Description |
+|---------|------------|
+| ticker | Company ticker |
+| cik | SEC company identifier |
+| filing_type | 10-K, 10-Q, DEF 14A |
+| filing_date | Filing date |
+| segment_name | Due diligence category |
+| sec_item | Original SEC item |
+| original_chunk | Raw filing text |
+| summary_bullet_points | AI generated summary |
+
+---
+
+# Main Components
+
+## 1. Edgar Downloader
+
+Responsible for
+
+- Connecting to EDGAR
+- Downloading filings
+- Managing SEC rate limits automatically
+
+Uses
+
+```python
+Company()
+```
+
+from the `edgartools` package.
+
+---
+
+## 2. Section Extractor
+
+Uses
+
+```python
+extract_section()
+```
+
+instead of fragile regular expressions.
+
+Advantages
+
+- Native parsing
+- Cleaner extraction
+- Less maintenance
+- Higher reliability
+
+---
+
+## 3. Due Diligence Mapper
+
+Function
+
+```python
+categorize_to_due_diligence_segment()
+```
+
+Maps SEC filing sections into business-oriented investment categories.
+
+---
+
+## 4. Chunking Engine
+
+Function
+
+```python
+chunk_text()
+```
+
+Splits large filing sections into overlapping chunks suitable for LLM processing.
+
+---
+
+## 5. AI Summarizer
+
+Function
+
+```python
+call_qwen_summarizer()
+```
+
+Communicates with a Modal-hosted Qwen model and generates concise executive summaries.
+
+---
+
+## 6. Database Writer
+
+Function
+
+```python
+save_chunks_to_db()
+```
+
+Uses PostgreSQL batch insertion for efficient storage.
+
+---
+
+## 7. Pipeline Orchestrator
+
+Function
+
+```python
+run_ingestion_pipeline()
+```
+
+Coordinates the complete ETL workflow:
+
+1. Download filings
+2. Extract sections
+3. Categorize
+4. Chunk
+5. Summarize
+6. Store into PostgreSQL
+
+---
+
+# Example Pipeline Output
+
+```
+Initializing edgartools tracking for AAPL
+
+Found 12 filings
+
+Processing 10-K
+
+Item 1
+
+↓
+
+Supply Chain & Infrastructure Health
+
+↓
+
+7 Chunks
+
+↓
+
+Summarized
+
+↓
+
+Stored
+
+Processing Item 7
+
+↓
+
+Financial Performance
+
+↓
+
+12 Chunks
+
+↓
+
+Summarized
+
+↓
+
+Stored
+
+...
+
+Batch inserting 148 records...
+```
+
+---
+
+# Technology Stack
+
+| Component | Technology |
+|------------|------------|
+| Language | Python |
+| SEC API | edgartools |
+| Summarization | Qwen 7B |
+| Inference | Modal |
+| Database | PostgreSQL |
+| Driver | psycopg2 |
+| Batch Insert | execute_values |
+
+---
+
+# Design Philosophy
+
+This pipeline is designed as the **knowledge ingestion layer** of a financial Retrieval-Augmented Generation system.
+
+Instead of storing raw SEC filings directly, it transforms them into structured, searchable, and summarized knowledge units optimized for downstream AI analysis.
+
+The architecture separates:
+
+- Data acquisition
+- Document structuring
+- Semantic summarization
+- Persistent storage
+
+making the system scalable, modular, and reusable across multiple financial analysis applications.
+
+---
+
+# Future Improvements
+
+- Parallel summarization of chunks
+- Async database insertion
+- Automatic incremental filing updates
+- Duplicate detection
+- Embedding generation (pgvector)
+- Multi-model summarization support
+- Retry queue for failed API calls
+- Support for 8-K and S-1 filings
+
+-------------------------------------------------------------------------------------------------------------------
+# 🕸️ Financial Knowledge Graph & AI Audit Engine
+
+A hybrid financial intelligence pipeline that transforms SEC financial statements into a **knowledge graph**, computes financial ratios deterministically using Python, enriches missing disclosures with **Yahoo Finance**, and performs node-level financial audits using a Large Language Model.
+
+Unlike traditional financial analysis pipelines that send entire statements to an LLM, this system separates **mathematical computation** from **conceptual reasoning**, allowing deterministic financial calculations while leveraging AI only for interpretation.
+
+---
+
+# Architecture
+
+```mermaid
+flowchart TD
+
+A[Company Ticker]
+
+B[SEC Financial Statements]
+
+C[Structured Financial Registry]
+
+D[Financial Knowledge Graph]
+
+E[Python Math Engine]
+
+F[yfinance Fallback Layer]
+
+G[Ego-Centric Subgraphs]
+
+H[Groq LLM Auditor]
+
+I[Final Financial Audit Ledger]
+
+A --> B
+B --> C
+C --> D
+D --> F
+F --> E
+E --> G
+G --> H
+H --> I
+```
+
+---
+
+# Project Goal
+
+Traditional LLM-based financial analysis has several limitations:
+
+- Models often hallucinate calculations.
+- Ratios are recomputed inconsistently.
+- Missing SEC disclosures create incomplete analyses.
+- Entire financial statements consume unnecessary context.
+
+This project addresses these issues by separating responsibilities:
+
+- **Python performs all financial mathematics**
+- **Knowledge Graph captures accounting relationships**
+- **LLM performs qualitative reasoning only**
+
+The result is a deterministic and explainable financial audit pipeline.
+
+---
+
+# Features
+
+- SEC financial statement extraction
+- Automatic taxonomy mapping
+- Financial Knowledge Graph generation
+- Deterministic ratio calculations
+- Yahoo Finance fallback for missing metrics
+- Ego-centric graph extraction
+- Node-by-node AI financial audits
+- Structured JSON audit reports
+
+---
+
+# System Pipeline
+
+```mermaid
+sequenceDiagram
+
+participant User
+participant SEC
+participant Graph
+participant Python
+participant Groq
+
+User->>SEC: Request Company Financials
+
+SEC-->>User: Income Statement
+
+SEC-->>User: Balance Sheet
+
+SEC-->>User: Cash Flow
+
+User->>Graph: Build Knowledge Graph
+
+Graph->>Python: Compute Ratios
+
+Python->>Graph: Updated Metrics
+
+Graph->>Groq: Node Context
+
+Groq-->>Graph: Financial Assessment
+
+Graph-->>User: Complete Audit Ledger
+```
+
+---
+
+# High-Level Workflow
+
+```mermaid
+flowchart LR
+
+Ticker
+
+-->
+
+SEC Financial Extraction
+
+-->
+
+Knowledge Graph
+
+-->
+
+Missing Data Recovery
+
+-->
+
+Financial Ratios
+
+-->
+
+Subgraph Extraction
+
+-->
+
+LLM Audit
+
+-->
+
+Audit Ledger
+```
+
+---
+
+# Pipeline Overview
+
+The pipeline executes six stages.
+
+## Stage 1 — SEC Financial Extraction
+
+Financial statements are downloaded directly using **edgartools**.
+
+Extracted statements include:
+
+- Income Statement
+- Balance Sheet
+- Cash Flow Statement
+
+The latest reporting period is automatically detected.
+
+---
+
+## Stage 2 — Financial Registry Construction
+
+Each statement is converted into a normalized long-form registry.
+
+Example
+
+| Concept | Date | Value |
+|----------|------|------:|
+| Revenue | 2024 | ... |
+| Net Income | 2024 | ... |
+| Assets | 2024 | ... |
+
+Only valid disclosures are retained.
+
+---
+
+## Stage 3 — Knowledge Graph Construction
+
+Instead of treating statements independently, every financial metric becomes a graph node.
+
+Example
+
+```text
+Revenue
+│
+├── Gross Profit
+│
+├── Operating Income
+│
+└── Net Income
+```
+
+The graph captures accounting relationships between financial metrics.
+
+---
+
+# Canonical Financial Metrics
+
+The graph currently models over **50 financial concepts**, including:
+
+### Income Statement
+
+- Revenue
+- Gross Profit
+- Operating Income
+- Net Income
+- R&D
+- SG&A
+- Interest Expense
+
+### Balance Sheet
+
+- Total Assets
+- Current Assets
+- Inventory
+- Accounts Receivable
+- Cash
+- Goodwill
+- Long-Term Debt
+- Equity
+
+### Cash Flow
+
+- Operating Cash Flow
+- Investing Cash Flow
+- Financing Cash Flow
+- Capital Expenditures
+- Free Cash Flow
+
+### Derived Ratios
+
+- Gross Margin
+- Operating Margin
+- Net Profit Margin
+- Current Ratio
+- Debt-to-Equity
+- Return on Assets
+- Return on Equity
+
+---
+
+# Knowledge Graph Relationships
+
+The graph contains deterministic accounting relationships.
+
+Example
+
+```mermaid
+graph TD
+
+Revenue --> GrossProfit
+
+Revenue --> OperatingIncome
+
+Revenue --> NetIncome
+
+GrossProfit --> OperatingIncome
+
+OperatingIncome --> NetIncome
+
+NetIncome --> RetainedEarnings
+
+OperatingCashFlow --> FreeCashFlow
+
+CapitalExpenditures --> FreeCashFlow
+
+CurrentAssets --> CurrentRatio
+
+CurrentLiabilities --> CurrentRatio
+```
+
+These relationships provide structural context for downstream AI reasoning.
+
+---
+
+# Taxonomy Mapping
+
+SEC XBRL concepts vary across companies.
+
+The pipeline maps multiple SEC concepts into standardized canonical metrics.
+
+Example
+
+| SEC Taxonomy | Canonical Metric |
+|--------------|-----------------|
+| Revenues | Revenue |
+| SalesRevenueNet | Revenue |
+| RevenueFromContractWithCustomerExcludingAssessedTax | Revenue |
+
+This allows different companies to share a unified financial representation.
+
+---
+
+# Missing Data Recovery
+
+Some companies omit certain disclosures.
+
+A secondary recovery layer retrieves missing metrics from **Yahoo Finance**.
+
+Recovered metrics include:
+
+- Assets
+- Revenue
+- Equity
+- Cash
+- Operating Cash Flow
+- Free Cash Flow
+- Capital Expenditures
+
+Recovered nodes are marked with
+
+```
+Disclosed (yfinance Fallback)
+```
+
+to preserve provenance.
+
+---
+
+# Deterministic Financial Engine
+
+All financial ratios are calculated exclusively by Python.
+
+Examples
+
+```
+Gross Margin
+
+Gross Profit / Revenue
+```
+
+```
+Current Ratio
+
+Current Assets / Current Liabilities
+```
+
+```
+Debt-to-Equity
+
+Total Liabilities / Shareholders Equity
+```
+
+```
+ROA
+
+Net Income / Total Assets
+```
+
+```
+ROE
+
+Net Income / Equity
+```
+
+The LLM never performs financial calculations.
+
+---
+
+# Ego-Centric Graph Extraction
+
+Instead of sending the entire graph to the LLM, only the neighborhood around a metric is extracted.
+
+Example
+
+```
+Operating Income
+
+↓
+
+Revenue
+
+↓
+
+Operating Expenses
+
+↓
+
+Gross Profit
+```
+
+This minimizes context size while preserving structural information.
+
+---
+
+# AI Financial Auditor
+
+Each graph node is independently evaluated using Groq.
+
+The LLM receives
+
+- metric value
+- neighboring financial metrics
+- graph structure
+
+The model returns
+
+```json
 {
-    "NVDA": {
-        "Strategic Moat & Disruption: How does management qualitatively define their long-term competitive moat and strategic defenses against emerging technological or low-cost disruptors?": "Management does not qualitatively define their long-term competitive moat and strategic defenses against emerging technological or low-cost disruptors in the provided text context. However, the company highlights risks related to security breaches, acquisitions, and regulatory proceedings that could impact their business.",
-        "Consumer Shift Rationale: What specific narrative explanations does management provide for recent structural shifts in consumer preferences, behavior, or product mix demand?": "Management cites several factors contributing to structural shifts in consumer preferences, behavior, or product mix demand. These include the increased frequency of new product introductions, which may cause customers to delay purchases or struggle to adopt new products as quickly as forecasted. Additionally, transitions to new products are noted to be difficult, potentially impairing the company's ability to predict demand and impacting supply mix, while also possibly incurring additional costs. The company also mentions changes in business and economic conditions, market conditions, sudden decreases in demand, inventory obsolescence due to changing technology and customer requirements, new product introductions, failure to estimate customer demand properly, and competitive actions as factors influencing demand.",
-        "Pricing Power Execution: What is the company's explicit strategy for managing pricing adjustments under inflationary pressures, and how is customer volume elasticity characterized?": "The company does not explicitly disclose its strategy for managing pricing adjustments under inflationary pressures. However, it mentions that customer programs, including rebates and marketing development funds (MDFs), are accounted for as a reduction in revenue and accrued based on expected claims by customers. The company also notes that estimates for customer program accruals include a combination of historical attainment and claim rates, which may be adjusted based on relevant internal and external factors. No specific data on customer volume elasticity is provided.",
-        "Underpenetrated Growth Vectors: How does the company define its qualitative value proposition and expansion roadmap for newly targeted or underpenetrated market segments?": "The company does not explicitly define its qualitative value proposition and expansion roadmap for newly targeted or underpenetrated market segments. However, NVIDIA's strategy involves acquiring and investing in businesses that offer products, services, and technologies to expand or enhance its strategic objectives. The company focuses on anticipating customer demands and delivering products at competitive prices and quality levels. NVIDIA's growth is driven by data center compute and networking platforms, with a product cadence of 1-year for Data Center compute product introductions.",
-        "M&A Integration Friction: What operational challenges, culture clashes, or timeline delays did management encounter during recent corporate restructurings or post-merger integrations?": "NVIDIA (NVDA) has disclosed potential operational challenges and risks associated with mergers and acquisitions (M&A) integrations, including difficulty integrating technology, systems, products, and operations, as well as retaining key personnel. The company has also noted the risk of assuming liabilities, incurring amortization expenses, and impairment charges to goodwill or write-downs of acquired assets. Specific metrics related to M&A integration friction were not provided, but the company has mentioned that they have experienced challenges with systems integration in the past, including lengthy and costly integration processes, delays in purchasing and shipping products, and difficulties with system integration via electronic data interchange.",
-        "FX Operational Adaptation: Beyond financial hedging instruments, what structural adjustments (such as local sourcing or localized pricing) is the company executing to manage foreign currency volatility?": "The company does not explicitly disclose specific structural adjustments to manage foreign currency volatility beyond financial hedging instruments. However, the company mentions that it continuously manages product availability and costs with its vendors within its supply chain. The company also notes that its product and solution pricing generally does not fluctuate with short-term changes in costs.",
-        "Incentive Compensation Alignment: How are executive incentive metrics and performance targets qualitatively structured to align leadership with long-term enterprise value creation over short-term earnings?": "The provided text and structured pipeline metrics do not explicitly discuss the qualitative structure of executive incentive metrics and performance targets for NVDA. However, the DEF 14A section is typically where such information about executive compensation and incentive plans would be found. Unfortunately, the value for DEF 14A is listed as 'Not Found/Omitted', indicating that the specific details about executive incentive metrics and performance targets are not available in the provided data.",
-        "Human Capital & Labor Vitality: What does the human capital disclosure reveal about the health of labor relations, employee turnover risks, and the company's ability to retain highly specialized talent?": "NVIDIA had approximately 42,000 employees across 38 countries as of the end of fiscal year 2026. The workforce composition includes 31,000 in research and development and 11,000 in sales, marketing, operations, and administrative positions. More than 80% of employees are in technical roles, and over half hold an advanced degree. The company reported a turnover rate of 3.7% in fiscal year 2026. Employee referrals accounted for over 40% of new hires, and the company invests in employee development through training and tuition reimbursement programs.",
-        "Key-Person & Succession Risk: To what extent does the business suffer from founder-led dependency, key-person risk, or structural gaps in executive succession planning?": "NVIDIA faces key-person risk and potential succession planning challenges due to its high dependence on the services of its longstanding executive team. The company's failure to ensure effective succession planning, transfer of knowledge, and smooth transitions involving executives and key employees could hinder its strategic planning, execution, and long-term success.",
-        "Board Oversight of Emerging Technology: How are the board of directors and executive committees explicitly structured to oversee data privacy, cybersecurity governance, and artificial intelligence adoption?": "The board of directors and executive committees' structure for overseeing data privacy, cybersecurity governance, and artificial intelligence adoption is not explicitly disclosed in the provided text context or structured pipeline metrics. However, the company mentions risks related to regulatory, legal, and AI adoption, indicating a need for oversight. The metrics provided focus on financial and operational data, such as office space, inventory charges, and revenue, but do not directly address board or committee structures.",
-        "Related-Party Transaction Risks: What qualitative descriptions are provided around related-party transactions involving executives or major shareholders that could indicate governance conflicts?": "The provided text context and structured pipeline metrics do not contain qualitative descriptions around related-party transactions involving executives or major shareholders that could indicate governance conflicts. There is no mention of related-party transactions or potential governance conflicts in the given text.",
-        "ESG & Decarbonization Mandates: How does management characterize environmental compliance costs, carbon reduction goals, or climate transit risks as drivers of fundamental capital allocation shifts?": "Management characterizes environmental compliance costs, carbon reduction goals, or climate transition risks as potential drivers of fundamental capital allocation shifts, citing possible increased direct costs, capital expenditures, and compliance costs. They note that new regulations could result in greater costs associated with changes to manufacturing processes, procurement of raw materials, and higher energy costs to reduce emissions.",
-        "Single-Source Sourcing Chokepoints: What specific component or raw material dependencies are highlighted where the company relies on a single or sole-source vendor without immediate alternatives?": "NVIDIA faces potential risks related to single-source or sole-source vendor dependencies, particularly in its supply chain. The company relies on a limited number of global suppliers, foundries, contract manufacturers, assembly and test providers, and memory manufacturers. While specific components or raw materials are not explicitly mentioned, the company notes that it has a concentrated supply chain in Asia and faces risks related to supplier failure, decommitment, and changes in supplier policies. The company also faces risks related to wafer and component prices, manufacturing capacity, and product quality.",
-        "Logistics & Manufacturing Concentration: How does the company describe the physical and geographic concentration of its internal manufacturing facilities or outsourced third-party logistics hubs?": "NVIDIA's internal manufacturing facilities and outsourced third-party logistics hubs are concentrated in Asia. The company is working to enhance the resiliency and redundancy of its supply chain, which is currently concentrated in Asia. NVIDIA is also increasing its U.S.-based manufacturing and investing in specialized equipment and processes to support domestic production.",
-        "Raw Material Scarcity Strategies: What narrative details are provided regarding long-term procurement contract negotiations, raw material scarcity, or structural leverage shifts in favor of suppliers?": "NVIDIA faces risks related to raw material scarcity and supply chain disruptions, including lack of guaranteed supply of components and capacity, decommitment by suppliers, and potential higher wafer and component prices. The company continuously manages product availability and costs with vendors and has entered into prepaid manufacturing and capacity agreements to secure supply. However, challenges in estimating demand and supply constraints may impact the company's ability to meet customer demand and scale its supply chain.",
-        "Intellectual Property & Patent Horizons: How does the company characterize its structural reliance on third-party licenses, proprietary patents, and the qualitative threat of impending patent expirations?": "NVIDIA relies on a combination of patents, trademarks, trade secrets, employee and third-party nondisclosure agreements, and licensing arrangements to protect its intellectual property (IP). The company's currently issued patents have expiration dates ranging from March 2026 to June 2045. NVIDIA also relies on international treaties, organizations, and foreign laws to protect its IP. However, the company acknowledges that foreign laws may not provide the same level of protection as US law, making piracy of its technology and products more likely. NVIDIA continuously assesses where to seek formal protection for innovations and technologies based on factors such as manufacturing location, strategic technology directions, and the degree of IP law enforcement in different jurisdictions. The company has licensed technology from third parties and expects to continue entering into such license agreements.",
-        "Vendor Switching Frictions: What qualitative operational complexities, data migration issues, or financial switching costs are cited as barriers to changing major cloud, SaaS, or infrastructure vendors?": "No specific qualitative operational complexities, data migration issues, or financial switching costs related to vendor switching frictions were cited as barriers to changing major cloud, SaaS, or infrastructure vendors.",
-        "Geopolitical & Trade Tariff Exposure: How is management actively modifying its footprint to mitigate sovereign interventions, cross-border trade friction, local protectionism, or international tariffs?": "NVIDIA's management is actively modifying its footprint to mitigate sovereign interventions, cross-border trade friction, local protectionism, or international tariffs by monitoring and adapting to changes in government policies, trade regulations, and economic conditions. The company has faced challenges such as tariffs imposed on its products, including a 25% tariff rate applied to H200 products imported into the United States. In response, NVIDIA has taken steps such as generating revenue under licenses granted by the USG in August 2025 for its H20 products. The company has also begun shipping production units of Blackwell Ultra platforms in 2026, indicating its efforts to adapt to changing trade policies. However, specific details on comprehensive mitigation strategies are not explicitly outlined in the provided text.",
-        "Brand-Damaging Litigation: What is the qualitative substance of active lawsuits, class-actions, or intellectual property disputes that pose material threats to brand equity or operational continuity?": "NVIDIA is involved in various legal proceedings, including a securities class action lawsuit related to alleged false or misleading statements about channel inventory and cryptocurrency mining's impact on GPU demand in 2017 and 2018. The company faces risks from patent infringement and intellectual property rights violations, which could result in significant damages, invalidation of patents, or injunctive relief. Litigation and regulatory proceedings are inherently uncertain and may have a material adverse impact on NVIDIA's brand equity and operational continuity.",
-        "Data Privacy Regulatory Shocks: How does the company assess its ongoing compliance vulnerabilities and exposure to changing cross-border data protection frameworks like GDPR, CCPA, or localized privacy mandates?": "NVIDIA assesses its ongoing compliance vulnerabilities and exposure to changing cross-border data protection frameworks through its acknowledgement of the risks associated with data privacy and security laws. The company processes sensitive, confidential, or personal data subject to various privacy and security laws, regulations, industry standards, and contractual obligations. NVIDIA's potential exposure to changing data protection frameworks like GDPR, CCPA, or localized privacy mandates may result in adverse consequences, including reputational harm, litigation, regulatory inquiries, and financial loss. The company's risk factors section highlights the potential impact of non-compliance with data protection laws on its business, financial condition, and results of operations.",
-        "Legacy Environmental Liabilities: What specific qualitative exposures exist regarding historical environmental remediation mandates, toxic waste site cleanups, or outstanding EPA violations?": "There are no specific qualitative exposures mentioned regarding historical environmental remediation mandates, toxic waste site cleanups, or outstanding EPA violations. However, the company notes that compliance with existing or future governmental regulations, including those pertaining to environmental, health and safety requirements, could further increase their costs and impact their competitive position.",
-        "Uncertain Tax Positions & Audits: What narrative rationale is provided for unrecognized tax benefits, pending international transfer pricing audits, or the potential loss of regional tax holidays?": "The company provides for income tax contingencies based on its estimate of whether, and the extent to which, additional taxes may be due. As of January 25, 2026, the company concluded certain state deferred tax assets are more likely than not realizable and released $711 million of valuation allowance. The company also has unrecognized tax benefits, but no specific amount is mentioned for pending international transfer pricing audits or the potential loss of regional tax holidays.",
-        "Internal Controls Weakness Root Causes: What specific root causes, structural deficiencies, or cultural factors are cited by management for any identified material weaknesses in internal controls over financial reporting?": "The provided text and structured pipeline metrics do not explicitly cite specific root causes, structural deficiencies, or cultural factors for any identified material weaknesses in internal controls over financial reporting. However, the text mentions that failure to implement new or updated controls, or difficulties encountered in their implementation, could harm operating results or cause failure to meet reporting obligations. It also notes that identification of material weaknesses, even if quickly remediated, may cause investors to lose confidence in financial statements and the stock price may decline.",
-        "Anti-Bribery & FCPA Exposures: How does the company manage, police, and describe its regulatory compliance risks regarding the Foreign Corrupt Practices Act (FCPA) within high-risk emerging markets?": "The company acknowledges the risks associated with regulatory compliance, including the Foreign Corrupt Practices Act (FCPA), and mentions that it is subject to laws and regulations domestically and worldwide, affecting its operations in areas including anti-corruption. However, no specific metrics or detailed processes are provided on how NVDA manages, polices, and describes its regulatory compliance risks regarding FCPA within high-risk emerging markets.",
-        "Post-Closing Strategic Shifts: What subsequent events disclosures indicate post-period asset divestitures, material debt issuances, or strategic execution changes not captured in the core financial tables?": "There are no specific disclosures indicating post-period asset divestitures, material debt issuances, or strategic execution changes not captured in the core financial tables. However, the company mentions that they are finalizing an investment and partnership agreement with OpenAI, but there is no assurance that a transaction will be completed.",
-        "Risk Factor Narrative Evolution: How has the ordering, framing, or inclusion of top-tier risk factors evolved over the past fiscal periods to reflect emerging operational or systemic threats?": "The risk factor narrative for NVDA has evolved to reflect emerging operational and systemic threats. In recent fiscal periods, NVDA has emphasized risks related to regulatory, legal, and sustainability matters. Specifically, the company has highlighted the potential impact of export controls on its supply chain, which is currently concentrated in Asia. Additionally, NVDA has noted the importance of complying with laws and regulations related to IP ownership, taxes, and environmental sustainability. The company has also acknowledged the potential risks associated with the responsible use of AI and climate change. \n\nIn terms of quantitative metrics, NVDA's 10-K filing (Item 2, 7, 8, 11, 12, DEF 14A) provides insight into the company's operational performance. For example, NVDA incurred a $4.5 billion charge in Q1 FY2026 for excess inventory and purchase obligations related to its H20 product. The company also generated $60 million in H20 revenue under licenses granted by USG in August 2025. Furthermore, NVDA's tariff rate for H200 products imported into the United States is 25%.\n\nThe company's risk factors can be summarized as follows:\n- Failure to meet evolving industry and market needs may impact financial results.\n- Competition could adversely affect market share and financial results.\n- Macroeconomic factors, such as supply chain and manufacturing costs, employee wages, and capital equipment costs, may impact the business.\n- Export controls and restrictions may limit alternative manufacturing locations and negatively impact the business.\n- Scrutiny regarding corporate sustainability practices could result in financial, reputational, or operational harm and liability.\n\nOverall, NVDA's risk factor narrative has become more comprehensive, reflecting the company's growing awareness of emerging operational and systemic threats.",
-        "Product Recalls & Safety Inquiries: What qualitative disclosures are provided regarding ongoing product safety testing, consumer recalls, federal safety probes, or product liability claims?": "NVIDIA discloses that they generally remain responsible to customers for warranty product defects, and some product failures have been discovered after shipping or use. Undiscovered vulnerabilities could result in data loss or expose customers to malicious software. The company has incurred significant warranty, support, and repair costs due to product defects in the past and may face similar issues in the future, including potential product recalls.",
-        "Capital Allocation Philosophy Nuances: How does management describe its qualitative framework for balancing shareholder return programs (buybacks/dividends) against capital reinvestment into business preservation?": "Management's qualitative framework for balancing shareholder return programs against capital reinvestment into business preservation is not explicitly stated in the provided text. However, the company mentions that they 'continuously evaluate our liquidity and capital resources, including our access to external capital, to ensure we can finance future capital requirements.' They also prioritize investments in their operations, as evidenced by $52.2 billion in cash used in investing activities, primarily driven by purchases of equity investment securities and a non-exclusive license agreement. Share repurchases also increased in fiscal year 2026, indicating a commitment to shareholder returns.",
-        "Restrictive Covenant Bottlenecks: What qualitative operating restrictions, negative pledges, or strategic bottlenecks are imposed on management by current credit agreements and debt covenants?": "The current credit agreements and debt covenants impose the following qualitative operating restrictions, negative pledges, or strategic bottlenecks on management: (1) The company's aggregate debt maturities as of January 25, 2026, are $1,000 million due in one year, $2,750 million due in one to five years, $1,250 million due in five to ten years, and $3,500 million due in greater than ten years. (2) The company has a commercial paper program of up to $25.0 billion. (3) The company has facility lease guarantees, long-term debt, purchase commitments, and operating lease obligations as described in Note 10, Note 11, Note 12, and Note 17 of the Notes to the Consolidated Financial Statements. (4) The company expects to continue investing in its ecosystem and is finalizing an investment and partnership agreement with OpenAI, although there is no assurance that a transaction will be completed. (5) The company has granted and may continue to grant extended payment terms to some customers, which could impact its ability to collect payment. (6) The company's vendors have requested and may continue to ask for shorter payment terms, which may impact its cash flow generation. (7) The company is exposed to counterparty risk, including customers' or partners' inability to fulfill their financial commitments.",
-        "Labor Disruption & Unionization Threats: How does management characterize its exposure to active labor organizing, collective bargaining timelines, or the structural threat of strikes and work stoppages?": "Management does not explicitly characterize its exposure to active labor organizing, collective bargaining timelines, or the structural threat of strikes and work stoppages in the provided text context. There is no specific mention of labor disruption, unionization threats, or related metrics."
-    },
-    "GOOGL": {
-        "Strategic Moat & Disruption: How does management qualitatively define their long-term competitive moat and strategic defenses against emerging technological or low-cost disruptors?": "Management defines their long-term competitive moat and strategic defenses against emerging technological or low-cost disruptors through significant investments in technical infrastructure, diversification of revenue streams beyond advertising, and development of new products and services, including those using AI. However, these endeavors involve significant risks and uncertainties, including diversion of resources, different monetization models, and regulatory scrutiny. The company faces intense competition, and its business objectives may be negatively affected by various factors, including changes in user trust and engagement, harm to its reputation and brands, and regulatory inquiries.",
-        "Consumer Shift Rationale: What specific narrative explanations does management provide for recent structural shifts in consumer preferences, behavior, or product mix demand?": "Management cites several factors contributing to recent structural shifts in consumer preferences, behavior, or product mix demand. These include changes in technology advancements, user preferences, and the variety of devices used to access their products and services. Specifically, they mention the growing variety of devices such as phones, laptops, tablets, video game consoles, voice-activated speakers, wearables, automobiles, and television-streaming devices. They also highlight the importance of addressing user concerns, such as the sharing of misinformation and objectionable content, to maintain user confidence in their brands. Furthermore, they note that revenue growth rate could decline due to factors like changes in customer usage, demand for existing products, and shifts to lower-priced products and services.",
-        "Pricing Power Execution: What is the company's explicit strategy for managing pricing adjustments under inflationary pressures, and how is customer volume elasticity characterized?": "The company's explicit strategy for managing pricing adjustments under inflationary pressures is not explicitly stated. However, Alphabet Inc. determines standalone selling prices based on observable prices of products and services sold or priced separately in comparable circumstances to similar customers. The company also estimates and accounts for customer incentives and credits as variable consideration. Customer volume elasticity is not explicitly characterized, but the company faces competitive pricing and delivery models, and may be affected by regulatory scrutiny, customer risks, and supply chain constraints.",
-        "Underpenetrated Growth Vectors: How does the company define its qualitative value proposition and expansion roadmap for newly targeted or underpenetrated market segments?": "The company does not explicitly define its qualitative value proposition and expansion roadmap for newly targeted or underpenetrated market segments in the provided text context. However, it mentions 'Expanded AI Offerings in our Products and Services' as a factor influencing revenue growth and mix, indicating a focus on AI-driven growth. The company also highlights the importance of intellectual property and competitive position in various sectors.",
-        "M&A Integration Friction: What operational challenges, culture clashes, or timeline delays did management encounter during recent corporate restructurings or post-merger integrations?": "The company has disclosed potential operational challenges and risks associated with acquisitions, joint ventures, investments, and divestitures. These challenges include failure to successfully integrate acquired operations, technologies, services, and personnel, cultural integration and retention of employees, implementation of controls, procedures, and policies at the acquired company, and integration of accounting and other administrative systems. Additionally, the company faces risks related to realizing expected financial or strategic goals, investigations or litigation by governmental authorities, and liability for activities of the acquired company before the acquisition.",
-        "FX Operational Adaptation: Beyond financial hedging instruments, what structural adjustments (such as local sourcing or localized pricing) is the company executing to manage foreign currency volatility?": "The company is exposed to foreign currency volatility due to its international operations, which accounted for approximately 52% of consolidated revenues in 2025. To manage this risk, beyond financial hedging instruments, Alphabet is executing structural adjustments such as local sourcing and localized pricing. However, the exact details of these structural adjustments are not explicitly mentioned in the provided text context. The company is also experiencing and may in the future experience supply shortages, price increases, quality issues, or longer lead times that could harm its operations due to various factors including foreign currency exchange rates.",
-        "Incentive Compensation Alignment: How are executive incentive metrics and performance targets qualitatively structured to align leadership with long-term enterprise value creation over short-term earnings?": "The provided text and structured pipeline metrics do not explicitly discuss the qualitative structure of executive incentive metrics and performance targets for GOOGL. However, according to the structured pipeline metrics (DEF 14A), proxy data which typically includes executive compensation details is either not found or omitted, suggesting that specific details about incentive metrics and performance targets may be found in a proxy statement (DEF 14A) that is not provided here.",
-        "Human Capital & Labor Vitality: What does the human capital disclosure reveal about the health of labor relations, employee turnover risks, and the company's ability to retain highly specialized talent?": "The human capital disclosure reveals that Alphabet (GOOGL) prioritizes attracting and retaining key talent through competitive compensation programs and significant investments in employee development. As of December 31, 2025, Alphabet had 190,820 employees. The company offers industry-leading benefits and programs to support employees' diverse needs, career growth, and well-being. However, the disclosure also highlights risks related to labor relations and employee turnover, particularly in the competitive AI talent market. The company faces challenges in retaining and motivating employees due to intense competition, and its compensation arrangements may not always be successful. Additionally, immigration policy and regulatory changes may impact its ability to hire, mobilize, or retain global talent.",
-        "Key-Person & Succession Risk: To what extent does the business suffer from founder-led dependency, key-person risk, or structural gaps in executive succession planning?": "Alphabet Inc. faces a moderate level of founder-led dependency and key-person risk. All executive officers and key employees are at-will employees, and the company does not maintain key-person life insurance policies. However, the company emphasizes its corporate culture, which fosters innovation, creativity, and teamwork. The 10-K filing does not provide detailed information on executive succession planning, but it mentions that as the organization grows and evolves, it may need to adapt its corporate culture and work environments.",
-        "Board Oversight of Emerging Technology: How are the board of directors and executive committees explicitly structured to oversee data privacy, cybersecurity governance, and artificial intelligence adoption?": "The provided text and structured pipeline metrics do not explicitly disclose the structure of the board of directors and executive committees for overseeing data privacy, cybersecurity governance, and artificial intelligence adoption. However, the text highlights the risks associated with AI technologies, data privacy, and cybersecurity, suggesting that these are areas of concern for the company. The DEF 14A metric indicates that proxy data is either not found or omitted, which could imply a lack of detailed disclosure on the board's oversight structure in the available documents.",
-        "Related-Party Transaction Risks: What qualitative descriptions are provided around related-party transactions involving executives or major shareholders that could indicate governance conflicts?": "There are no qualitative descriptions provided around related-party transactions involving executives or major shareholders that could indicate governance conflicts.",
-        "ESG & Decarbonization Mandates: How does management characterize environmental compliance costs, carbon reduction goals, or climate transit risks as drivers of fundamental capital allocation shifts?": "Management characterizes environmental compliance costs, carbon reduction goals, and climate transition risks as drivers of fundamental capital allocation shifts, citing 'considerable investments' required for robust programs and initiatives in environmental sustainability, climate change, and human capital. Specifically, they mention that AI's energy and water demands have made efforts to reduce emissions more complex and challenging. However, no specific metrics or targets are provided in the text context.",
-        "Single-Source Sourcing Chokepoints: What specific component or raw material dependencies are highlighted where the company relies on a single or sole-source vendor without immediate alternatives?": "The company relies on single or sole-source vendors for certain components used in its technical infrastructure and devices. These components are available from only one or limited sources, and the company may not be able to find replacement vendors on favorable terms in the event of a supply chain disruption.",
-        "Logistics & Manufacturing Concentration: How does the company describe the physical and geographic concentration of its internal manufacturing facilities or outsourced third-party logistics hubs?": "The company does not provide specific information about the physical and geographic concentration of its internal manufacturing facilities or outsourced third-party logistics hubs. However, it mentions that its capital investments in property and equipment consist primarily of technical infrastructure, which includes data center land, buildings and leasehold improvements, and servers and network equipment, as well as office facilities and ground-up development projects.",
-        "Raw Material Scarcity Strategies: What narrative details are provided regarding long-term procurement contract negotiations, raw material scarcity, or structural leverage shifts in favor of suppliers?": "GOOGL discusses risks related to raw material scarcity and procurement contract negotiations. The company relies on contract manufacturers and third-party suppliers for components and distribution. They face potential supply shortages, price increases, and quality issues due to various factors such as manufacturing capacity, labor shortages, logistics, inflation, and geopolitical tensions. GOOGL may experience increased costs and supply constraints if they are unable to negotiate favorable contractual terms. The amounts to be paid under these agreements are based on actual volumes and are not readily determinable. There are no specific details on long-term procurement contract negotiations or structural leverage shifts in favor of suppliers.",
-        "Intellectual Property & Patent Horizons: How does the company characterize its structural reliance on third-party licenses, proprietary patents, and the qualitative threat of impending patent expirations?": "GOOGL relies on intellectual property such as trademarks, copyrights, patents, and trade secrets to protect its proprietary technology and brand. The company has registered and applied for US and international trademarks, service marks, domain names, and copyrights, and has filed patent applications in the US and foreign countries. GOOGL has also acquired patent assets to supplement its portfolio. However, the company faces a qualitative threat of impending patent expirations and intellectual property claims, which have increased as it expands its business. These claims can be time-consuming and expensive to litigate or settle, and if successful, could harm GOOGL's business, product and service offerings, financial condition, and operating results.",
-        "Vendor Switching Frictions: What qualitative operational complexities, data migration issues, or financial switching costs are cited as barriers to changing major cloud, SaaS, or infrastructure vendors?": "The provided text context and structured pipeline metrics do not explicitly mention vendor switching frictions, data migration issues, or financial switching costs as barriers to changing major cloud, SaaS, or infrastructure vendors. However, the text context highlights various operational complexities and risks associated with data security, privacy, and regulatory compliance that could potentially impact vendor switching decisions.",
-        "Geopolitical & Trade Tariff Exposure: How is management actively modifying its footprint to mitigate sovereign interventions, cross-border trade friction, local protectionism, or international tariffs?": "Alphabet Inc. (GOOGL) is actively modifying its footprint to mitigate sovereign interventions, cross-border trade friction, local protectionism, or international tariffs by diversifying its international operations and managing risks associated with geopolitical tensions, trade disputes, and regulatory challenges. The company has significant international operations, which accounted for approximately 52% of consolidated revenues in 2025. However, these operations expose the company to risks such as restrictions on foreign ownership and investments, sanctions, tariffs, import and export controls, and other market access barriers. To mitigate these risks, Alphabet is likely to continue growing internationally, investing in technical infrastructure, and managing its supply chain to minimize disruptions.",
-        "Brand-Damaging Litigation: What is the qualitative substance of active lawsuits, class-actions, or intellectual property disputes that pose material threats to brand equity or operational continuity?": "Alphabet Inc. (GOOGL) is involved in various active lawsuits, class-actions, and intellectual property disputes that pose material threats to brand equity or operational continuity. The company faces claims, lawsuits, regulatory and government inquiries, and investigations involving competition, intellectual property, data privacy and security, tax and related compliance, labor and employment, commercial disputes, content generated by users, goods and services offered by advertisers or publishers, personal injury, consumer protection, and other matters. Certain matters include speculative claims for substantial or indeterminate amounts of damages. The company is cooperating with investigations and defending litigation or appealing decisions where appropriate. Adverse results in these or similar future lawsuits may include awards of monetary damages and remedies that could harm the business, reputation, financial condition, and operating results.",
-        "Data Privacy Regulatory Shocks: How does the company assess its ongoing compliance vulnerabilities and exposure to changing cross-border data protection frameworks like GDPR, CCPA, or localized privacy mandates?": "The company assesses its ongoing compliance vulnerabilities and exposure to changing cross-border data protection frameworks through its risk management and regulatory compliance processes. Alphabet Inc. (GOOGL) is subject to numerous US federal and state as well as foreign laws and regulations covering a wide variety of subjects. The company faces increasingly heightened scrutiny from both US and foreign governments with respect to its compliance with laws and regulations, particularly in the areas of data protection, data usage, and portability. Authorities around the world have adopted and are considering a number of legislative and regulatory proposals concerning data protection, data usage and portability, and encryption of user data. The company relies on statutory safe harbors to protect against liability for various linking, caching, ranking, recommending, and hosting activities. However, legislation or court rulings affecting these safe harbors may harm the company and may impose significant operational challenges.",
-        "Legacy Environmental Liabilities: What specific qualitative exposures exist regarding historical environmental remediation mandates, toxic waste site cleanups, or outstanding EPA violations?": "The provided text and structured pipeline metrics do not explicitly mention specific qualitative exposures regarding historical environmental remediation mandates, toxic waste site cleanups, or outstanding EPA violations related to GOOGL. However, the text does mention the company's exposure to an evolving regulatory environment, claims, lawsuits, investigations, and potential legal liabilities that could affect business practices and financial results. The company faces various laws, regulations, investigations, enforcement lawsuits, and regulatory actions that may result in substantial fines and penalties.",
-        "Uncertain Tax Positions & Audits: What narrative rationale is provided for unrecognized tax benefits, pending international transfer pricing audits, or the potential loss of regional tax holidays?": "Alphabet Inc. is subject to continuous examination of its income tax returns by the IRS and other tax authorities. The IRS is currently examining the company's 2019 through 2021 tax returns. Additionally, Alphabet has received tax assessments in multiple foreign jurisdictions asserting transfer pricing adjustments or permanent establishment. The company regularly assesses the likelihood of adverse outcomes resulting from these examinations to determine the adequacy of its provision for income taxes. As of the year ended December 31, 2025, Alphabet reflects these changes in its results.",
-        "Internal Controls Weakness Root Causes: What specific root causes, structural deficiencies, or cultural factors are cited by management for any identified material weaknesses in internal controls over financial reporting?": "The root causes of any identified material weaknesses in internal controls over financial reporting are not explicitly stated in the provided text context. However, the text mentions that management recognizes the limitations of controls and procedures, including resource constraints and the need to apply judgment in evaluating the benefits of possible controls and procedures relative to their costs. Additionally, the text notes that the company has devoted and will continue to invest significant resources to develop, test, and maintain its products and services, particularly with regards to AI, in order to minimize unintended harmful effects.",
-        "Anti-Bribery & FCPA Exposures: How does the company manage, police, and describe its regulatory compliance risks regarding the Foreign Corrupt Practices Act (FCPA) within high-risk emerging markets?": "GOOGL manages, polices, and describes its regulatory compliance risks regarding the Foreign Corrupt Practices Act (FCPA) within high-risk emerging markets through its disclosure of risks associated with international operations, including anti-corruption laws and regulations. The company acknowledges the risks of violating anti-corruption laws, such as the US Foreign Corrupt Practices Act, and other local laws prohibiting certain payments to government officials, which could result in civil and criminal penalties. GOOGL's risk management practices include monitoring and addressing regulatory compliance risks, but specific metrics on FCPA exposures are not provided in the given text context.",
-        "Post-Closing Strategic Shifts: What subsequent events disclosures indicate post-period asset divestitures, material debt issuances, or strategic execution changes not captured in the core financial tables?": "There are no indications of post-period asset divestitures, material debt issuances, or strategic execution changes not captured in the core financial tables. The text context primarily discusses accounting policies, legal matters, impairment of long-lived assets, and variable interest entities (VIEs), but does not mention any specific events or disclosures related to post-closing strategic shifts.",
-        "Risk Factor Narrative Evolution: How has the ordering, framing, or inclusion of top-tier risk factors evolved over the past fiscal periods to reflect emerging operational or systemic threats?": "The risk factor narrative for GOOGL has evolved to reflect emerging operational and systemic threats, with a significant emphasis on regulatory risks and compliance costs. In the latest fiscal period, the company has highlighted its exposure to a broader scope of laws and regulations as it expands its business, particularly in areas such as financial services, healthcare, and the public sector. The ordering and framing of top-tier risk factors have shifted to prioritize these emerging threats, including regulatory scrutiny of pricing and delivery models, and the potential for government audits and cost reviews. Specifically, the company has noted that it 'may continue to incur fines and we expect increased costs associated with compliance, modifications to our products and services, and limitations on our ability to pursue certain business practices.'",
-        "Product Recalls & Safety Inquiries: What qualitative disclosures are provided regarding ongoing product safety testing, consumer recalls, federal safety probes, or product liability claims?": "The company discloses that it is subject to various claims including product warranty, product liability, and consumer protection claims related to product defects. They also mention that if a loss is reasonably possible and can be estimated, they disclose the possible loss in Note 10 of the Notes to Consolidated Financial Statements. However, no specific details on ongoing product safety testing, consumer recalls, federal safety probes, or product liability claims are provided.",
-        "Capital Allocation Philosophy Nuances: How does management describe its qualitative framework for balancing shareholder return programs (buybacks/dividends) against capital reinvestment into business preservation?": "Alphabet's (GOOGL) capital allocation philosophy involves balancing shareholder return programs (buybacks and dividends) with capital reinvestment into business preservation. According to the company's financial statements, the primary use of capital is to invest for the long-term growth of the business. Management regularly evaluates its cash and capital structure, including the size, pace, and form of capital return to stockholders. In 2023, 2024, and 2025, the company repurchased stock worth $61,504 million, $62,222 million, and $45,709 million respectively, and paid dividends worth $0, $7,363 million, and $10,049 million respectively. The company also made significant investments in property and equipment, with purchases of $32,251 million, $52,535 million, and $91,447 million in 2023, 2024, and 2025 respectively.",
-        "Restrictive Covenant Bottlenecks: What qualitative operating restrictions, negative pledges, or strategic bottlenecks are imposed on management by current credit agreements and debt covenants?": "The qualitative operating restrictions, negative pledges, or strategic bottlenecks imposed on management by current credit agreements and debt covenants are not explicitly stated in the provided text. However, the text mentions that disruptions in accessing future financing or managing indebtedness could adversely affect the company's ability to execute its strategy and harm its financial condition. Additionally, the company may face difficulties in accessing capital markets or entering into other forms of financing on favorable terms, which could increase costs of financing and restrict investment in the business.",
-        "Labor Disruption & Unionization Threats: How does management characterize its exposure to active labor organizing, collective bargaining timelines, or the structural threat of strikes and work stoppages?": "Management does not explicitly characterize its exposure to active labor organizing, collective bargaining timelines, or the structural threat of strikes and work stoppages in the provided text context. There is no specific mention of labor disruption, unionization threats, or related metrics in the given text or structured pipeline metrics."
-    }
+  "health_score": 9,
+  "assessment": "...",
+  "risk_flag": false
 }
+```
+
+The prompt explicitly instructs the model:
+
+- never perform calculations
+- trust Python-derived ratios
+- understand accounting semantics
+- distinguish healthy cash outflows from financial distress
+
+---
+
+# Final Output
+
+Every disclosed metric produces an audit record.
+
+Example
+
+```json
+{
+  "Revenue": {
+    "value": 348000000000,
+    "audit": {
+      "health_score": 9,
+      "assessment": "...",
+      "risk_flag": false
+    }
+  }
+}
+```
+
+The complete output forms a structured **Financial Audit Ledger**.
+
+---
+
+# Technology Stack
+
+| Component | Technology |
+|------------|------------|
+| Language | Python |
+| SEC Data | edgartools |
+| Financial Data | Yahoo Finance |
+| Knowledge Graph | NetworkX |
+| Numerical Engine | NumPy |
+| Data Processing | Pandas |
+| LLM | Groq |
+| Model | Llama 3.3 70B |
+
+---
+
+# Design Philosophy
+
+The system follows a layered architecture where each component specializes in a single responsibility.
+
+```
+SEC
+
+↓
+
+Structured Financial Data
+
+↓
+
+Knowledge Graph
+
+↓
+
+Deterministic Math Engine
+
+↓
+
+Context Extraction
+
+↓
+
+LLM Reasoning
+
+↓
+
+Financial Audit
+```
+
+This separation ensures that:
+
+- Python performs mathematics
+- The graph captures accounting relationships
+- The LLM provides conceptual interpretation
+
+making the overall system more accurate, explainable, and scalable than a purely LLM-driven approach.
+
+---
+
+# Future Improvements
+
+- Multi-period trend analysis
+- Temporal knowledge graphs
+- Peer-company comparison graphs
+- Industry benchmark integration
+- Graph Neural Networks (GNNs)
+- Monte Carlo financial simulations
+- Financial anomaly detection
+- Interactive graph visualization
+- Portfolio-level graph analytics
