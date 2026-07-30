@@ -22,9 +22,9 @@ load_dotenv()
 # TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
 # GEMINI_API_KEY = os.getenv('GEMINI_API_KEY1')
 # GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-GROQ_API_KEY = "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"
-TAVILY_API_KEY = "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"
-GEMINI_API_KEY = "AQ.Ab8RN6KA9MWDlWOiaUMaDqAuiVxfdJNmLuTQF3CwSYLW24Z-sA"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY2")
 
 # DEFINING
 def __len__(x):

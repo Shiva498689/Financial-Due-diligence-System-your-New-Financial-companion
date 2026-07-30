@@ -3,18 +3,14 @@ from qdrant_client import AsyncQdrantClient, models
 from google import genai
 import json
 import asyncio
-
 DB_TABLE_NAME = "financial_due_diligence_chunks"
-
 GEMINI_API_KEY = os.environ.get(
     "GEMINI_API_KEY",
     "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg",
 )
 GEMINI_MODEL = "gemini-3.5-flash-lite"
-
 if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
     print("[!] Warning: Please set a valid GEMINI_API_KEY in your environment.")
-
 DILIGENCE_QUESTIONS = ["Strategic Moat & Disruption: How does management identify its core competitive barriers and market entry protection?",
     "Strategic Moat & Disruption: What specific low-cost or technological disruptors does management note as direct competitive threats?",
     "Consumer Shift Rationale: What explanations does management offer for structural changes in consumer purchasing habits?",
@@ -76,7 +72,6 @@ DILIGENCE_QUESTIONS = ["Strategic Moat & Disruption: How does management identif
     # "Labor Disruption & Unionization Threats: What explicit percentages of the current global or domestic workforce operate under active union configurations?",
     # "Labor Disruption & Unionization Threats: What upcoming collective bargaining contract expirations present immediate work stoppage or strike exposures?",
     ]
-
 RETRIEVAL_STATEMENTS = [
     "Competitive advantages include proprietary technology market barriers scale economies brand equity distribution networks.",
     "Disruptive competitors low-cost alternatives emerging technological threats market share erosion.",
@@ -150,8 +145,6 @@ RETRIEVAL_STATEMENTS = [
     # "Unionized employees collective bargaining agreements union representation percentage workforce.",
     # "Contract expiration strike risk work stoppages union negotiations organized labor.",
 ]
-
-
 async def qdrant_vector_retrieval(client, ticker, retrieval_statement, limit=2):
     try:
         results = await client.query_points(
@@ -174,8 +167,6 @@ async def qdrant_vector_retrieval(client, ticker, retrieval_statement, limit=2):
     except Exception as e:
         print(f"[!] Qdrant Retrieval Error: {str(e)}")
         return []
-
-
 async def analysis_genrator(ticker):
     target_ticker = ticker
     if not target_ticker:
@@ -186,7 +177,7 @@ async def analysis_genrator(ticker):
     try:
         qdrant_client = AsyncQdrantClient(
             url="https://3e3b954a-76d4-425b-992b-51d1b942e2dd.eu-west-1-0.aws.cloud.qdrant.io:6333", 
-            api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6ODVjOGY5YzMtODE1Mi00NGY4LTg1YzktZTQwMDM0ZWE4NmMzIn0.iKGjbwExVzBoWsqAIollnnW2eecE8LYpB7ur3CAlPlg",
+            api_key=os.getenv("QDRANT_API_KEY"),
             cloud_inference=True
         )
         print("[+] Qdrant connection established successfully.")
@@ -200,7 +191,7 @@ async def analysis_genrator(ticker):
     # Configuration for Free Tier stability
     BATCH_SIZE = 15  # 60 questions / 20 = 3 clean API calls
     final_answers = []
-    client = genai.Client(api_key="AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg")
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # Process questions in chunks of 20
     for batch_idx in range(0, len(paired_tasks), BATCH_SIZE):
@@ -320,13 +311,4 @@ async def analysis_genrator(ticker):
     await qdrant_client.close()
     print("\n[+] Analysis execution complete successfully.")
     return final_answers
-# async def narrative_analysis_node() :
-#     answer = await analysis_genrator("MRVL")
-#     return {
-#         "narrative_analysis": answer,
-#     }
-# if __name__ == "__main__" :
-#     # from ingestion_agent import run_ingestion_pipeline
-#     # asyncio.run(run_ingestion_pipeline("MRVL"))
-#     result = asyncio.run(narrative_analysis_node())
-#     print(result)
+

@@ -15,8 +15,7 @@ set_identity("Shiva Dubey 123shivadubey@gmail.com")
 
 # Read API key from environment; fall back to hardcoded dev key
 GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY",
-    "AQ.Ab8RN6K3NVt8Kfxpu_FBu8yUQ86GZHljcF_n1CJHElD8yJt1gA",
+    "GEMINI_API_KEY1"
 )
 
 # Use a valid Gemini model name
@@ -378,7 +377,7 @@ async def run_yfinance_fallback_layer_async(G: nx.DiGraph, ticker: str) -> nx.Di
 
 async def run_pipeline(ticker: str, gemini_api_key: str):
     # api_key = gemini_api_key or GEMINI_API_KEY
-    client = genai.Client(api_key="AQ.Ab8RN6Jw2-4EiWOlK6IsNIIM2INdZO4y-x682FSxIIrCIsgm8w")
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     raw_quant_data = await execute_quant_extraction_pipeline_async(ticker)
     G = build_financial_knowledge_graph(raw_quant_data)
     G = await run_yfinance_fallback_layer_async(G, ticker)

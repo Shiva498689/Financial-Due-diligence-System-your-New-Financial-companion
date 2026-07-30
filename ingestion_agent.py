@@ -20,7 +20,7 @@ class IngestionAgent():
 
         self.qdrant_client = AsyncQdrantClient(
             url="https://3e3b954a-76d4-425b-992b-51d1b942e2dd.eu-west-1-0.aws.cloud.qdrant.io:6333", 
-            api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6ODVjOGY5YzMtODE1Mi00NGY4LTg1YzktZTQwMDM0ZWE4NmMzIn0.iKGjbwExVzBoWsqAIollnnW2eecE8LYpB7ur3CAlPlg",
+            api_key=os.getenv("QDRANT_API_KEY"),
             cloud_inference=True
         )
         self.embedding_model = "sentence-transformers/all-MiniLM-L6-v2"

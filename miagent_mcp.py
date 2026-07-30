@@ -7,7 +7,10 @@ import yfinance as yf
 from typing import Dict, Any
 from fredapi import Fred
 from mcp.server.fastmcp import FastMCP
-FRED_API_KEY =  "9ac0872c482533a44172ed6576f2b337"
+from dotenv import load_dotenv
+load_dotenv()
+
+FRED_API_KEY = os.getenv("FRED_API_KEY")
 if FRED_API_KEY is None:
     raise RuntimeError(
         "Please set the environment variable FRED_API_KEY"

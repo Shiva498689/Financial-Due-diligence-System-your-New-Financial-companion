@@ -25,7 +25,7 @@ except ImportError:
         return {}
     async def generate_all_charts_async(state, out_dir):
         return {}
-GEMINI_API_KEY = "AIzaSyB7VhwgUE-uERX62E5oEYEYSnd8SbhemHw"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 OUTPUTS_DIR = Path(__file__).parent / "outputs"
 LOGO_PATH = Path(__file__).parent / "assets" / "wallstreet_dd_logo.png"

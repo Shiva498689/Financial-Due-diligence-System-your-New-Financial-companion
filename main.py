@@ -23,11 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Read Gemini API key from environment (falls back to hardcoded for local dev)
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY",
-    "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg",
-)
+from dotenv import load_dotenv
+load_dotenv()
+
+# Read Gemini API key from environment
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 output_dir_static = Path(__file__).parent / "outputs"
 output_dir_static.mkdir(parents=True, exist_ok=True)

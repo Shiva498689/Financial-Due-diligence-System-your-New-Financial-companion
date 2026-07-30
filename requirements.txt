@@ -14,3 +14,10 @@ google-genai
 modal
 asyncpg
 aiohttp
+scikit-learn
+python-dotenv
+qdrant-client
+python-docx
+openpyxl
+matplotlib
+os

@@ -11,11 +11,7 @@ from miagent_mcp import get_market_metrics
 from google.genai.types import GenerateContentConfig
 from google import genai
 from ingestion_agent import run_ingestion_pipeline
-# Read API key from environment; fall back to the hardcoded dev key
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY",
-    "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg",
-)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 client = genai.Client(api_key=GEMINI_API_KEY)
