@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+pydantic
+langgraph
+groq
+yfinance
+edgartools
+numpy
+pandas
+networkx
+fredapi
+mcp
+google-genai
+modal
+asyncpg
+aiohttp
