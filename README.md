@@ -1,80 +1,111 @@
-# Financial Due Diligence System - Autonomous Financial Companion
+# The Wall Street DD - Backend Core
 
-An autonomous due diligence system for financial analysis, credit risk modeling, SEC EDGAR filing ingestion, and narrative report generation powered by multi-agent architectures (LangGraph) and LLMs.
+Welcome to the backend component of **The Wall Street DD**! This is an advanced, AI-powered financial due diligence pipeline that automates the comprehensive analysis of publicly traded companies. By orchestrating a multi-agent workflow, it performs quantitative valuation, qualitative narrative analysis, and risk assessment, returning detailed reports to the user.
 
----
+## 🚀 Key Features
 
-## 📁 Repository Structure
+- **Automated Due Diligence Workflow**: Uses **LangGraph** to orchestrate multiple specialized AI agents (ingestion, analysis, charting, memo writing, etc.).
+- **Real-Time Streaming API**: Built with **FastAPI**, it uses Server-Sent Events (SSE) to stream live progress of the analytical agents back to the frontend.
+- **Comprehensive Artifact Generation**: Automatically generates professional artifacts for every analyzed ticker:
+  - Markdown Reports (with Mermaid diagrams)
+  - Microsoft Word Documents (`.docx`)
+  - Excel DCF (Discounted Cash Flow) Valuation Models (`.xlsx`)
+  - Chart Images (PNGs for KPI metrics, margins, risk radar, etc.)
+- **Model Context Protocol (MCP)**: Includes a FastMCP server (`server.py`) exposing market intelligence tools like peer comparison and ratio extraction to external MCP clients.
+- **Robust Financial Modeling**: Calculates intrinsic value via Monte Carlo DCF simulations and performs fraud/risk checks (Piotroski F-Score, Beneish M-Score, Ohlson O-Score, Merton Distance to Default).
 
+## 🛠️ Technology Stack
+
+- **Framework**: FastAPI (Python)
+- **AI / Agentic Workflow**: LangGraph, Google GenAI (Gemini), Groq
+- **Financial Data & APIs**: yfinance, edgartools, fredapi, Alpaca (for news)
+- **MCP**: mcp, FastMCP
+- **Data Science**: pandas, numpy, scikit-learn, networkx
+
+## 📋 Prerequisites
+
+- **Python 3.10+**
+- API Keys for the AI models and data providers.
+
+### Environment Variables
+Create a `.env` file in the root of the `backend_core` directory and configure the following keys (based on your system requirements):
+
+```env
+# Required for the main analysis pipeline
+GEMINI_API_KEY=your_google_gemini_key
+
+# Other potential keys based on integrations
+GROQ_API_KEY=your_groq_key
+# ALPACA_API_KEY=... (If required for news fetching)
+# ALPACA_SECRET_KEY=...
 ```
-.
-├── backend/                  # Core backend application files
-│   ├── main.py               # FastAPI entry point & API endpoints
-│   ├── masterlanggraph.py    # LangGraph workflow orchestration graph
-│   ├── nodes.py              # LangGraph node definitions & state schema
-│   ├── ingestion_agent.py    # SEC EDGAR filing ingestion & chunking pipeline
-│   ├── miagent_mcp.py        # Market intelligence MCP tools & FRED integration
-│   ├── quant_web.py          # Quantitative financial extraction engine
-│   ├── quant_engine_metrics.py# Edgar financial metrics extractor
-│   ├── analysis_agent.py     # Piotroski F-Score, Beneish M-Score, Ohlson O-Score & Merton DCF
-│   ├── consumer_analysis.py  # Qualitative narrative & Qdrant vector retrieval agent
-│   ├── get_best_peer.py      # Competitor peer identification & matching pipeline
-│   ├── memo_agent.py         # Automated executive memo & report builder (.md, .docx, .xlsx)
-│   ├── news_fetcher.py       # Alpaca market news integration
-│   ├── chart_generator.py    # Financial metric chart generation
-│   ├── .env.example          # Environment variable configuration template
-│   └── requirements.txt      # Python dependencies
-├── .env.example              # Copy of environment configuration template
-└── README.md
-```
 
----
+## ⚙️ Setup and Installation
 
-## 🚀 Getting Started
+1. **Navigate to the Backend Directory**:
+   ```bash
+   cd backend_core
+   ```
 
-### 1. Prerequisites
-- Python 3.10+
-- Virtual Environment (recommended)
+2. **Create a Virtual Environment**:
+   ```bash
+   python -m venv venv
+   ```
 
-### 2. Environment Setup
-Create a `.env` file inside the `backend/` directory or root directory based on `.env.example`:
+3. **Activate the Virtual Environment**:
+   - **Windows**:
+     ```powershell
+     .\venv\Scripts\activate
+     ```
+   - **macOS/Linux**:
+     ```bash
+     source venv/bin/activate
+     ```
+
+4. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## 🏃‍♂️ Running the Application Locally
+
+### 1. The Main Due Diligence API (FastAPI)
+This server runs the LangGraph workflows and serves the frontend.
 
 ```bash
-cp backend/.env.example backend/.env
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+- The API will be accessible at: `http://localhost:8000`
+- API documentation (Swagger) is available at: `http://localhost:8000/docs`
 
-Set your API keys:
-- `GEMINI_API_KEY`: Google Gemini API key
-- `FRED_API_KEY`: Federal Reserve Economic Data API key
-- `ALPACA_API_KEY` & `ALPACA_API_SECRET`: Alpaca Market Data API credentials
-- `GROQ_API_KEY` & `TAVILY_API_KEY`: Peer analysis keys (optional)
-- `QDRANT_URL` & `QDRANT_API_KEY`: Qdrant vector database credentials
-
-### 3. Installation
+### 2. The MCP Server (Optional)
+If you want to run the standalone MCP (Model Context Protocol) server for market intelligence tools.
 
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-
-# On Windows:
-.venv\Scripts\activate
-
-# Install dependencies
-pip install -r backend/requirements.txt
+python server.py
 ```
+*(By default, it will run an SSE transport MCP server on port 8000, or whatever is specified in the `PORT` env var).*
 
-### 4. Running the Backend Server
+## 🔌 Core API Endpoints
 
-```bash
-cd backend
-python main.py
-```
+- `GET /api/run-diligence?ticker={SYMBOL}`
+  - **Description**: Triggers the entire LangGraph due diligence pipeline for a given stock ticker. Returns a Server-Sent Events (`text/event-stream`) stream containing node-by-node execution progress, and eventually the full markdown report, along with paths to the generated Word/Excel files.
+- `GET /api/news?symbol={SYMBOL}`
+  - **Description**: Fetches the latest relevant news for a given stock symbol using Alpaca.
 
-The API server will run at `http://localhost:8000`.
+## 📂 Output Artifacts Directory
 
----
+When you run a due diligence report, the generated artifacts are automatically stored in the `outputs/{TICKER}/` directory. The FastAPI server statically mounts this directory so that the frontend can easily download or display the files:
 
-## 📡 Key Endpoints
+- `outputs/{TICKER}/{TICKER}.md` (Markdown Summary)
+- `outputs/{TICKER}/{TICKER}_due_diligence.docx` (Full Word Report)
+- `outputs/{TICKER}/{TICKER}_dcf_model.xlsx` (Excel DCF Model)
+- `outputs/{TICKER}/charts/` (Generated visualizations)
 
-- `GET /api/run-diligence?ticker={TICKER}`: Stream full due-diligence analysis pipeline via Server-Sent Events (SSE).
-- `GET /api/news?symbol={TICKER}`: Fetch financial market news for a given ticker.
+## 🏗️ Architecture
+
+- `main.py`: FastAPI application entry point, routing, and SSE streaming logic.
+- `masterlanggraph.py` & `nodes.py`: Defines the LangGraph state machine and the individual agent tasks.
+- `*_agent.py` (e.g., `analysis_agent.py`, `ingestion_agent.py`, `memo_agent.py`): Specialized LLM-powered nodes handling specific tasks.
+- `chart_generator.py`: Generates the matplotlib charts based on financial data.
+- `quant_engine_metrics.py` & `get_ratios.py`: Handles quantitative data, Monte Carlo DCF valuations, and risk scoring models.
