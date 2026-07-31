@@ -20,4 +20,3 @@ qdrant-client
 python-docx
 openpyxl
 matplotlib
-os
