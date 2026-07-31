@@ -4,10 +4,8 @@ from google import genai
 import json
 import asyncio
 DB_TABLE_NAME = "financial_due_diligence_chunks"
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY",
-    "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg",
-)
+GEMINI_API_KEY = "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg"
+
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
     print("[!] Warning: Please set a valid GEMINI_API_KEY in your environment.")
@@ -177,7 +175,7 @@ async def analysis_genrator(ticker):
     try:
         qdrant_client = AsyncQdrantClient(
             url="https://3e3b954a-76d4-425b-992b-51d1b942e2dd.eu-west-1-0.aws.cloud.qdrant.io:6333", 
-            api_key=os.getenv("QDRANT_API_KEY"),
+            api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6ODVjOGY5YzMtODE1Mi00NGY4LTg1YzktZTQwMDM0ZWE4NmMzIn0.iKGjbwExVzBoWsqAIollnnW2eecE8LYpB7ur3CAlPlg",
             cloud_inference=True
         )
         print("[+] Qdrant connection established successfully.")

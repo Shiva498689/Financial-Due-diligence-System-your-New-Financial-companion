@@ -14,9 +14,7 @@ from google import genai
 set_identity("Shiva Dubey 123shivadubey@gmail.com")
 
 # Read API key from environment; fall back to hardcoded dev key
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY1"
-)
+GEMINI_API_KEY = "AQ.Ab8RN6KA9MWDlWOiaUMaDqAuiVxfdJNmLuTQF3CwSYLW24Z-sA"
 
 # Use a valid Gemini model name
 GEMINI_MODEL = "gemini-3.5-flash-lite"
