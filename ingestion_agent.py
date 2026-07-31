@@ -1,3 +1,4 @@
+import os
 import asyncio
 from datetime import datetime
 from edgar import set_identity, Company
