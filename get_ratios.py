@@ -4,7 +4,7 @@ import numpy as np
 from fredapi import Fred
 from dotenv import load_dotenv
 import os
-
+ 
 load_dotenv()
 FRED_API_KEY = os.environ.get("FRED_API_KEY")
 
