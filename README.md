@@ -108,22 +108,55 @@ At the core of the backend is a state machine powered by **LangGraph**, defined 
 
 ### The LangGraph Workflow
 
-The execution graph runs in parallel where possible to optimize speed:
+The execution graph runs in parallel where possible to optimize speed. Here is the visual representation of the state machine and data flow:
 
-1. **Initial Parallel Fetching**:
-   - `ingestion_node` (`ingestion_agent.py`): Ingests SEC filings and extracts structural financial metrics (Revenue, Income, Cash Flow, Balance Sheet data) using the `EdgarFinancialExtractor` (`quant_engine_metrics.py`).
-   - `market_intelligence_node` (`miagent_mcp.py`): Fetches real-time market metrics such as equity price, market capitalization, historical volatility, and macroeconomic indicators (e.g., risk-free rate, GNP deflator).
+```mermaid
+graph TD
+    START((START)) --> Ingestion[ingestion_node<br/>SEC Filings & Metrics]
+    START --> MI[market_intelligence_node<br/>Market Data & Prices]
+    
+    Ingestion --> Quant[quant_web_node<br/>Quant Audits]
+    MI --> Quant
+    
+    Ingestion --> Narrative[narrative_analysis_node<br/>Qualitative Insights]
+    MI --> Narrative
+    
+    Ingestion --> Analysis[analysis_agent_node<br/>Risk & DCF Models]
+    MI --> Analysis
+    
+    Quant --> Risk[Risk_flagging_node<br/>Composite Risk Score]
+    Narrative --> Risk
+    Analysis --> Risk
+    
+    Risk --> Report[report_generation_node<br/>Markdown & Artifacts]
+    Report --> END((END))
+    
+    classDef initial fill:#2874A6,stroke:#fff,color:#fff,stroke-width:2px;
+    classDef analysis fill:#148F77,stroke:#fff,color:#fff,stroke-width:2px;
+    classDef risk fill:#B03A2E,stroke:#fff,color:#fff,stroke-width:2px;
+    classDef report fill:#6C3483,stroke:#fff,color:#fff,stroke-width:2px;
+    
+    class Ingestion,MI initial;
+    class Quant,Narrative,Analysis analysis;
+    class Risk risk;
+    class Report report;
+```
 
-2. **Parallel Analysis Agents** (Dependent on Initial Fetching):
-   - `quant_web_node` (`quant_web.py`): Executes quantitative audits and ledger validations.
-   - `narrative_analysis_node` (`consumer_analysis.py`): Uses LLMs to generate qualitative, narrative-driven insights about the company's prospects.
-   - `analysis_agent_node` (`analysis_agent.py`): Computes advanced financial health and fraud detection models, including the Piotroski F-Score, Beneish M-Score, Ohlson O-Score, Merton Distance to Default, and calculates Monte Carlo DCF valuations.
+#### 1. Initial Parallel Fetching
+- `ingestion_node` (`ingestion_agent.py`): Ingests SEC filings and extracts structural financial metrics (Revenue, Income, Cash Flow, Balance Sheet data) using the `EdgarFinancialExtractor` (`quant_engine_metrics.py`).
+- `market_intelligence_node` (`miagent_mcp.py`): Fetches real-time market metrics such as equity price, market capitalization, historical volatility, and macroeconomic indicators (e.g., risk-free rate, GNP deflator).
 
-3. **Synthesis and Risk Evaluation**:
-   - `Risk_flagging_node`: Aggregates the results from the `analysis_agent` and categorizes the company's risk profile (LOW, MEDIUM, HIGH) across all models, outputting a composite `risk_report` and final verdict (e.g., "HEALTHY" or "STRESSED").
+#### 2. Parallel Analysis Agents
+*These agents wait for both initial nodes to complete before starting.*
+- `quant_web_node` (`quant_web.py`): Executes quantitative audits and ledger validations.
+- `narrative_analysis_node` (`consumer_analysis.py`): Uses LLMs to generate qualitative, narrative-driven insights about the company's prospects.
+- `analysis_agent_node` (`analysis_agent.py`): Computes advanced financial health and fraud detection models, including the Piotroski F-Score, Beneish M-Score, Ohlson O-Score, Merton Distance to Default, and calculates Monte Carlo DCF valuations.
 
-4. **Final Report Generation**:
-   - `report_generation_node` (`memo_agent.py`): The `memo_agent` takes the fully populated `AgentState` (including financials, narratives, and risk reports) and synthesizes the final professional Markdown report, and prepares the Word and Excel artifacts.
+#### 3. Synthesis and Risk Evaluation
+- `Risk_flagging_node`: Aggregates the results from the `analysis_agent` and categorizes the company's risk profile (LOW, MEDIUM, HIGH) across all models, outputting a composite `risk_report` and final verdict (e.g., "HEALTHY" or "STRESSED").
+
+#### 4. Final Report Generation
+- `report_generation_node` (`memo_agent.py`): The `memo_agent` takes the fully populated `AgentState` (including financials, narratives, and risk reports) and synthesizes the final professional Markdown report, and prepares the Word and Excel artifacts.
 
 ### Key Files
 
