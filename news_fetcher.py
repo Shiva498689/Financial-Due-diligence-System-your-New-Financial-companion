@@ -7,9 +7,8 @@ from typing import Optional, Dict, Any
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Placeholders for the API Key. The user will replace these.
-ALPACA_API_KEY = os.environ.get("ALPACA_API_KEY", "PKIVCVQ4HS47YSEPCVM7X5KYLO")
-ALPACA_API_SECRET = os.environ.get("ALPACA_API_SECRET", "9eCZkHXWcPoov3h7e7gm9BDveJx4fNi1WUtgtTzFeUwo")
+ALPACA_API_KEY = os.environ.get("ALPACA_API_KEY", "")
+ALPACA_API_SECRET = os.environ.get("ALPACA_API_SECRET", "")
 
 # Alpaca News API Endpoint
 ALPACA_NEWS_URL = "https://data.alpaca.markets/v1beta1/news"

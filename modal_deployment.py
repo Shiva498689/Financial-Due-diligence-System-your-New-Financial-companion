@@ -1,1 +1,4 @@
-This is redeundant so please refrain from reading this 
+"""
+Modal deployment module placeholder.
+Configure Modal serverless function deployment settings here if needed.
+"""

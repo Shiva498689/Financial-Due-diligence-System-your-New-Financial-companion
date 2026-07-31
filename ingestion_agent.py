@@ -6,21 +6,12 @@ import asyncpg
 import uuid
 from qdrant_client.models import PointStruct, Document, VectorParams, Distance
 from qdrant_client import AsyncQdrantClient ,models
-# from qdrant_client import model
-
-    # self.DB_CONFIG = {
-        #     "dbname": "financial_db",
-        #     "user": "postgres",
-        #     "password": "123shivadubey@gmail.com",
-        #     "host": "localhost",
-        #     "port": 5432
-        # }
 class IngestionAgent():
-    def __init__(self , ticker):
-        set_identity("Shiva Dubey 123shivadubey@gmail.com")
+    def __init__(self, ticker):
+        set_identity(os.getenv("EDGAR_IDENTITY", "FinancialDueDiligence System contact@financialdd.com"))
 
         self.qdrant_client = AsyncQdrantClient(
-            url="https://3e3b954a-76d4-425b-992b-51d1b942e2dd.eu-west-1-0.aws.cloud.qdrant.io:6333", 
+            url=os.getenv("QDRANT_URL", "http://localhost:6333"), 
             api_key=os.getenv("QDRANT_API_KEY"),
             cloud_inference=True
         )
@@ -202,5 +193,5 @@ async def run_ingestion_pipeline( ticker: str):
                 await obj.save_chunks_to_db(rows_to_insert)
             await asyncio.sleep(0.1)
 
-# if __name__ == "__main__":
-#         run_ingestion_pipeline("AAPL")
+if __name__ == "__main__":
+    asyncio.run(run_ingestion_pipeline("AAPL"))

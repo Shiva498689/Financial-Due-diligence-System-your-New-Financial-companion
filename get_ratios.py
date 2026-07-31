@@ -21,7 +21,7 @@ async def compute_hist_vol_252d(ticker: str, window: int = 252) -> float:
         if ("Adj Close", ticker.upper()) in df.columns:
             prices = df[("Adj Close", ticker.upper())].dropna()
         else:
-            # Agar purana yfinance version ho toh safely fallback
+            # Fallback for alternative yfinance dataframe structure
             prices = df["Adj Close"].dropna()
         log_ret = np.log(prices / prices.shift(1)).dropna()
         return float(log_ret.std() * np.sqrt(window))

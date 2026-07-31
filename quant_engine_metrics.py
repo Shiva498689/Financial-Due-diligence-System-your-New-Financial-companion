@@ -11,7 +11,7 @@ from edgar import Company, set_identity
 
 _IDENTITY_SET = False
 
-set_identity("Shiva Dubey 123shivadubey@gmail.com")
+set_identity(os.getenv("EDGAR_IDENTITY", "FinancialDueDiligence System contact@financialdd.com"))
 
 
 

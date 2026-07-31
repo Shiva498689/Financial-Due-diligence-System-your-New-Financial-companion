@@ -3,13 +3,8 @@ from qdrant_client import AsyncQdrantClient, models
 from google import genai
 import json
 import asyncio
-DB_TABLE_NAME = "financial_due_diligence_chunks"
-GEMINI_API_KEY = "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg" #please do not use them as they are outdated 
-
-# ALL THE CREDENTIALS EXPOSED HERE ARE OUTDATED AND DO NOT WORK SO PLEASE REFRAIN FROM USING THEM 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.5-flash-lite"
-if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
-    print("[!] Warning: Please set a valid GEMINI_API_KEY in your environment.")
 DILIGENCE_QUESTIONS = ["Strategic Moat & Disruption: How does management identify its core competitive barriers and market entry protection?",
     "Strategic Moat & Disruption: What specific low-cost or technological disruptors does management note as direct competitive threats?",
     "Consumer Shift Rationale: What explanations does management offer for structural changes in consumer purchasing habits?",
@@ -40,6 +35,7 @@ DILIGENCE_QUESTIONS = ["Strategic Moat & Disruption: How does management identif
     "Logistics & Manufacturing Concentration: What single-point distribution vulnerabilities exist across the outsourced third-party logistics network?",
     "Raw Material Scarcity Strategies: What are the operational parameters and minimum volume requirements of the company's long-term procurement obligations?",
     "Raw Material Scarcity Strategies: How has supplier concentration shifted structural input cost pricing power away from the company?", # exTRA QUESTIONS BELOW FOR THE ADVANCED VERSION OF THIS 
+    #These questions are for the advance version of this
     # "Intellectual Property & Patent Horizons: What core proprietary patents face impending expiration timelines over the near-term forecast horizon?",
     # "Intellectual Property & Patent Horizons: What material royalty structures or third-party technology licensing agreements are critical to product manufacturing?",
     # "Vendor Switching Frictions: What operational disruptions or data migration complexities act as structural barriers to switching primary cloud providers?",
@@ -102,6 +98,8 @@ RETRIEVAL_STATEMENTS = [
     "Logistics hubs distribution network central warehouse choke points outsourced fulfillment.",
     "Procurement contract purchase commitments long-term supply obligations purchase agreements.",
     "Supplier leverage input pricing power material scarcity seller concentration dynamics.",
+
+    # these are extra statements for the advanced version of this model (Not to be used right now )
     # "Patent expirations loss of exclusivity generic competition proprietary technology cliff.",
     # "Licensing agreements third-party technology royalties cross-license dependencies software licensing.",
     # "Cloud migration vendor lock-in switching complexities infrastructure architecture transition.",
@@ -175,8 +173,8 @@ async def analysis_genrator(ticker):
     print("\n[*] Connecting to Qdrant Cloud...")
     try:
         qdrant_client = AsyncQdrantClient(
-            url="https://3e3b954a-76d4-425b-992b-51d1b942e2dd.eu-west-1-0.aws.cloud.qdrant.io:6333", 
-            api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6ODVjOGY5YzMtODE1Mi00NGY4LTg1YzktZTQwMDM0ZWE4NmMzIn0.iKGjbwExVzBoWsqAIollnnW2eecE8LYpB7ur3CAlPlg",
+            url=os.getenv("QDRANT_URL", "http://localhost:6333"), 
+            api_key=os.getenv("QDRANT_API_KEY"),
             cloud_inference=True
         )
         print("[+] Qdrant connection established successfully.")
@@ -282,10 +280,6 @@ async def analysis_genrator(ticker):
                 else:
                     final_answers.append({q: "Error: Model failed to generate an answer for this key."})
 
-        except Exception as e:
-            print(f"[!] Gemini API Error on Batch {current_batch_num}: {e}")
-            for q, _ in batch:
-                final_answers.append({q: "Failed due to API execution error."})
         except Exception as e:
             print(f"[!] Gemini API Error on Batch {current_batch_num}: {e}")
             for q, _ in batch:

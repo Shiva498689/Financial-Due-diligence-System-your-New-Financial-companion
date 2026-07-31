@@ -11,12 +11,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 FRED_API_KEY = os.getenv("FRED_API_KEY")
-if FRED_API_KEY is None:
-    raise RuntimeError(
-        "Please set the environment variable FRED_API_KEY"
-    )
-fred = Fred(api_key=FRED_API_KEY)
+fred = Fred(api_key=FRED_API_KEY) if FRED_API_KEY else None
 mcp = FastMCP("Market Intelligence MCP")
+
+def _get_fred():
+    global fred, FRED_API_KEY
+    if not FRED_API_KEY:
+        FRED_API_KEY = os.getenv("FRED_API_KEY")
+    if FRED_API_KEY and not fred:
+        fred = Fred(api_key=FRED_API_KEY)
+    if not fred:
+        raise RuntimeError("Please set the environment variable FRED_API_KEY")
+    return fred
+
 def _ticker(ticker: str):
     return yf.Ticker(ticker)
 def _history(ticker: str, period="2y"):
@@ -63,7 +70,7 @@ def get_historical_equity_volatility_252d(
 @mcp.tool()
 def get_risk_free_rate() -> Dict[str, Any]:
    
-    series = fred.get_series("DGS10")
+    series = _get_fred().get_series("DGS10")
     value = float(series.dropna().iloc[-1])
     return {
         "risk_free_rate": value / 100.0
@@ -71,7 +78,7 @@ def get_risk_free_rate() -> Dict[str, Any]:
 @mcp.tool()
 def get_gnp_deflator() -> Dict[str, Any]:
     """Latest US GNP Deflator."""
-    series = fred.get_series("A191RD3A086NBEA")
+    series = _get_fred().get_series("A191RD3A086NBEA")
     value = float(series.dropna().iloc[-1])
     return {
         "gnp_deflator": value
@@ -110,10 +117,10 @@ def get_market_metrics(
         returns = np.log(close / close.shift(1)).dropna()
         volatility = returns.std() * math.sqrt(252)
         risk_free_rate = float(
-            fred.get_series("DGS10").dropna().iloc[-1]
+            _get_fred().get_series("DGS10").dropna().iloc[-1]
         ) / 100.0
         gnp_deflator = float(
-            fred.get_series("A191RD3A086NBEA").dropna().iloc[-1]
+            _get_fred().get_series("A191RD3A086NBEA").dropna().iloc[-1]
         )
         return {
             "current_equity_price": float(price),

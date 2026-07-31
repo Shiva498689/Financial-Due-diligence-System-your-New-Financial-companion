@@ -11,12 +11,9 @@ import pandas as pd
 import networkx as nx
 from google import genai
 
-set_identity("Shiva Dubey 123shivadubey@gmail.com")
+set_identity(os.getenv("EDGAR_IDENTITY", "FinancialDueDiligence System contact@financialdd.com"))
 
-# Read API key from environment; fall back to hardcoded dev key
-GEMINI_API_KEY = "AQ.Ab8RN6KA9MWDlWOiaUMaDqAuiVxfdJNmLuTQF3CwSYLW24Z-sA"
-
-# Use a valid Gemini model name
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 
 
