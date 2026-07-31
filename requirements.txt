@@ -9,7 +9,7 @@ numpy
 pandas
 networkx
 fredapi
-mcp
+mcp==1.26.0
 google-genai
 modal
 asyncpg
