@@ -102,10 +102,32 @@ When you run a due diligence report, the generated artifacts are automatically s
 - `outputs/{TICKER}/{TICKER}_dcf_model.xlsx` (Excel DCF Model)
 - `outputs/{TICKER}/charts/` (Generated visualizations)
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Data Flow
 
-- `main.py`: FastAPI application entry point, routing, and SSE streaming logic.
-- `masterlanggraph.py` & `nodes.py`: Defines the LangGraph state machine and the individual agent tasks.
-- `*_agent.py` (e.g., `analysis_agent.py`, `ingestion_agent.py`, `memo_agent.py`): Specialized LLM-powered nodes handling specific tasks.
-- `chart_generator.py`: Generates the matplotlib charts based on financial data.
-- `quant_engine_metrics.py` & `get_ratios.py`: Handles quantitative data, Monte Carlo DCF valuations, and risk scoring models.
+At the core of the backend is a state machine powered by **LangGraph**, defined in `masterlanggraph.py` and `nodes.py`. As the pipeline runs, an `AgentState` dictionary gets populated by different specialized agents, eventually culminating in a comprehensive final report.
+
+### The LangGraph Workflow
+
+The execution graph runs in parallel where possible to optimize speed:
+
+1. **Initial Parallel Fetching**:
+   - `ingestion_node` (`ingestion_agent.py`): Ingests SEC filings and extracts structural financial metrics (Revenue, Income, Cash Flow, Balance Sheet data) using the `EdgarFinancialExtractor` (`quant_engine_metrics.py`).
+   - `market_intelligence_node` (`miagent_mcp.py`): Fetches real-time market metrics such as equity price, market capitalization, historical volatility, and macroeconomic indicators (e.g., risk-free rate, GNP deflator).
+
+2. **Parallel Analysis Agents** (Dependent on Initial Fetching):
+   - `quant_web_node` (`quant_web.py`): Executes quantitative audits and ledger validations.
+   - `narrative_analysis_node` (`consumer_analysis.py`): Uses LLMs to generate qualitative, narrative-driven insights about the company's prospects.
+   - `analysis_agent_node` (`analysis_agent.py`): Computes advanced financial health and fraud detection models, including the Piotroski F-Score, Beneish M-Score, Ohlson O-Score, Merton Distance to Default, and calculates Monte Carlo DCF valuations.
+
+3. **Synthesis and Risk Evaluation**:
+   - `Risk_flagging_node`: Aggregates the results from the `analysis_agent` and categorizes the company's risk profile (LOW, MEDIUM, HIGH) across all models, outputting a composite `risk_report` and final verdict (e.g., "HEALTHY" or "STRESSED").
+
+4. **Final Report Generation**:
+   - `report_generation_node` (`memo_agent.py`): The `memo_agent` takes the fully populated `AgentState` (including financials, narratives, and risk reports) and synthesizes the final professional Markdown report, and prepares the Word and Excel artifacts.
+
+### Key Files
+
+- `main.py`: The FastAPI entry point. It orchestrates the HTTP endpoints, streams the LangGraph execution events to the frontend via SSE, and saves the final outputs to disk.
+- `server.py`: A FastMCP server exposing market intelligence tools to compatible MCP clients.
+- `chart_generator.py`: Autonomously creates the matplotlib visualizations (margins, DCF waterfalls, risk radar) embedded in the final reports.
+- `get_best_peer.py` & `get_ratios.py`: Utilities for fetching comparative competitor data and market ratios.
