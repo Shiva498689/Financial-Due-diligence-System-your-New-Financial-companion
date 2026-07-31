@@ -1,16 +1,4 @@
-"""
-chart_generator.py — Premium dark-themed chart + flowchart generator.
-======================================================================
-Charts produced:
-  1. kpi_health_scores.png   — Lollipop chart, legend below plot (no overlap)
-  2. revenue_breakdown.png   — Grouped bars with YoY % labels
-  3. margin_trends.png       — Grouped bars with % labels
-  4. dcf_waterfall.png       — Horizontal range bar, staggered labels
-  5. risk_radar.png          — Polar chart, no label collision
-  6. balance_sheet_pie.png   — Donut with centre total
-  7. risk_flowchart.png      — Matplotlib flowchart: 5 models → verdict
-  8. valuation_flowchart.png — Matplotlib flowchart: scenarios → verdict
-"""
+
 
 from __future__ import annotations
 
@@ -25,7 +13,6 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 import numpy as np
 
-# ── Colour palette ────────────────────────────────────────────────────────────
 BG      = "#0D1B2A"
 PANEL   = "#142233"
 NAVY    = "#1B3A6B"
@@ -52,7 +39,7 @@ plt.rcParams.update({
 })
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 def _dark(fig, ax, title: str):
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(PANEL)
@@ -124,7 +111,6 @@ async def generate_all_charts_async(state: Dict[str, Any], out_dir: Path) -> Dic
 
 
 
-# ── 1. KPI Health Scores ─────────────────────────────────────────────────────
 def _kpi(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     quant = state.get("quant_analysis") or {}
     if not quant:
@@ -156,7 +142,6 @@ def _kpi(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     colours = [col(s) for s in scores]
 
     n = len(labels)
-    # Enough height for all rows + legend at bottom
     fig_h = max(6, n * 0.42 + 1.8)
     fig, ax = plt.subplots(figsize=(9, fig_h))
     _dark(fig, ax, "KPI Health Scores — AI Audit Results")
@@ -194,7 +179,6 @@ def _kpi(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 2. Revenue / Income Comparison ───────────────────────────────────────────
 def _revenue(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     mapping = [
         ("Total Revenue",    "revenue_latest",          "revenue_previous"),
@@ -257,7 +241,6 @@ def _revenue(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 3. Margin Trends ─────────────────────────────────────────────────────────
 def _margins(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     quant = state.get("quant_analysis") or {}
     rev_p = state.get("revenue_previous") or 1
@@ -314,7 +297,6 @@ def _margins(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 4. DCF Valuation Range (staggered labels, no collision) ──────────────────
 def _dcf(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     p10 = state.get("monte_carlo_p10_floor")
     p50 = state.get("monte_carlo_p50_median")
@@ -330,13 +312,10 @@ def _dcf(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     _dark(fig, ax, "DCF Valuation Range — Monte Carlo vs Market Cap")
     ax.grid(axis="y", visible=False)
 
-    # Shaded range band
     ax.barh(0, T(p90) - T(p10), left=T(p10), height=0.38,
             color=NAVY, alpha=0.55, zorder=2)
 
-    # Compute label x-range for stagger logic
     vals_x = [T(p10), T(p50), T(p90)]
-    # Stagger: P10 label above, P50 label below, P90 label above
     label_spec = [
         (T(p10), f"${T(p10):.2f}T\nBear (P10)",    RED_LT,  +0.38, "bottom"),
         (T(p50), f"${T(p50):.2f}T\nBase (P50)",    AMB_LT,  -0.38, "top"),
@@ -348,14 +327,12 @@ def _dcf(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
                 fontsize=8, color=col, fontweight="bold", zorder=5,
                 bbox=dict(boxstyle="round,pad=0.2", fc=PANEL, ec=col, alpha=0.85))
 
-    # DCF point estimate — always below centre
     if dcf:
         ax.axvline(T(dcf), color=CYAN, linewidth=2.2, linestyle="--", zorder=4)
         ax.text(T(dcf), -0.52, f"${T(dcf):.2f}T\nDCF Estimate",
                 ha="center", va="top", fontsize=8, color=CYAN, fontweight="bold", zorder=5,
                 bbox=dict(boxstyle="round,pad=0.2", fc=PANEL, ec=CYAN, alpha=0.85))
 
-    # Market cap — above, with extra top margin
     if mkt:
         ax.axvline(T(mkt), color=WHITE, linewidth=1.8, linestyle=":", zorder=4)
         ax.text(T(mkt), +0.52, f"${T(mkt):.2f}T\nMarket Cap",
@@ -376,7 +353,6 @@ def _dcf(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 5. Risk Radar (no label/score collision) ──────────────────────────────────
 def _radar(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     piotroski = state.get("piotroski_f_score")
     beneish   = state.get("beneish_m_score")
@@ -401,7 +377,6 @@ def _radar(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     raw = [norm_f(piotroski), norm_b(beneish), norm_o(ohlson),
            norm_m(merton),    norm_d(p10, p50, p90)]
 
-    # Short single-line labels to prevent wrapping/collision
     cats = ["Financial\nStrength", "Earnings\nQuality",
             "Bankruptcy\nRisk", "Default\nDistance", "Valuation\nCertainty"]
 
@@ -414,20 +389,16 @@ def _radar(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     fig.patch.set_facecolor(BG)
     ax.set_facecolor(PANEL)
 
-    # Grid rings
     for level in [2, 4, 6, 8, 10]:
         ax.plot(angles, [level] * (N + 1), color=DGREY, linewidth=0.7, alpha=0.7)
 
-    # Fill + outline
     ax.fill(angles, scores_plot, alpha=0.20, color=GOLD)
     ax.plot(angles, scores_plot, color=GOLD, linewidth=2.5, zorder=4)
 
-    # Score dots + value label placed INWARD (at s - 1.2) to avoid axis overlap
     for a, s in zip(angles[:-1], raw):
         dot_col = GRN_LT if s >= 7 else (AMB_LT if s >= 4 else RED_LT)
         ax.plot(a, s, "o", color=dot_col, markersize=9, zorder=6,
                 markeredgecolor=WHITE, markeredgewidth=0.8)
-        # Place score label at 80% of the dot distance toward centre
         inner = max(s - 1.4, 0.5)
         ax.text(a, inner, f"{s:.1f}", ha="center", va="center",
                 fontsize=8, fontweight="bold", color=dot_col, zorder=7,
@@ -436,7 +407,6 @@ def _radar(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
 
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(cats, size=8.5, color=OFF_W)
-    # Extra top padding so title doesn't clip axis labels
     ax.set_ylim(0, 12)
     ax.set_yticks([2, 4, 6, 8, 10])
     ax.set_yticklabels(["2", "4", "6", "8", "10"], size=7, color=LGREY)
@@ -451,7 +421,6 @@ def _radar(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 6. Balance Sheet Donut ────────────────────────────────────────────────────
 def _donut(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     cash  = state.get("cash_and_equivalents_latest") or 0
     rec   = state.get("receivables_latest") or 0
@@ -507,7 +476,6 @@ def _donut(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 7. Risk Flowchart (matplotlib, for DOCX embedding) ───────────────────────
 def _draw_box(ax, cx, cy, w, h, text, bg, fg=WHITE, fs=8.5, radius=0.04):
     """Draw a rounded rectangle node with centred text."""
     box = FancyBboxPatch((cx - w/2, cy - h/2), w, h,
@@ -567,17 +535,15 @@ def _risk_flowchart(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     ax.set_xlim(0, 11); ax.set_ylim(0, 5)
     ax.axis("off")
 
-    # Top node
+   
     _draw_box(ax, 5.5, 4.3, 3.2, 0.7, f"{ticker} — Risk Assessment",
               NAVY, GOLD_LT, fs=10)
 
-    # 5 model nodes spread evenly
     xs = np.linspace(0.9, 10.1, 5)
     for i, ((label, flag), x) in enumerate(zip(nodes, xs)):
         _draw_box(ax, x, 2.5, 1.6, 1.1, label, _risk_col(flag), WHITE, fs=7.5)
         _arrow(ax, 5.5, 3.95, x, 3.05)
 
-    # Verdict node
     _draw_box(ax, 5.5, 0.75, 4.5, 0.7, f"Overall Verdict: {overall}",
               v_col, WHITE, fs=10)
     for x in xs:
@@ -592,7 +558,6 @@ def _risk_flowchart(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     return out
 
 
-# ── 8. Valuation Decision Flowchart ──────────────────────────────────────────
 def _valuation_flowchart(state: Dict[str, Any], out_dir: Path) -> Optional[Path]:
     p10 = state.get("monte_carlo_p10_floor")
     p50 = state.get("monte_carlo_p50_median")
@@ -615,7 +580,6 @@ def _valuation_flowchart(state: Dict[str, Any], out_dir: Path) -> Optional[Path]
     ax.set_xlim(0, 9); ax.set_ylim(0, 4.5)
     ax.axis("off")
 
-    # Scenario nodes (top row)
     scenario_nodes = [
         (1.2, 3.5, f"Bear Case\n${T(p10):.2f}T",  RED_LT),
         (4.5, 3.5, f"Base Case\n${T(p50):.2f}T",  AMB_LT),
@@ -624,17 +588,14 @@ def _valuation_flowchart(state: Dict[str, Any], out_dir: Path) -> Optional[Path]
     for cx, cy, txt, col in scenario_nodes:
         _draw_box(ax, cx, cy, 2.0, 0.75, txt, col, WHITE, fs=9)
 
-    # DCF estimate node
     _draw_box(ax, 4.5, 2.1, 2.6, 0.75,
               f"DCF Estimate\n${T(dcf):.2f}T", NAVY, GOLD_LT, fs=9)
     for cx, cy, *_ in scenario_nodes:
         _arrow(ax, cx, cy - 0.375, 4.5, 2.475)
 
-    # Market Cap node
     _draw_box(ax, 7.5, 2.1, 2.2, 0.75,
               f"Market Cap\n${T(mkt):.2f}T", DGREY, OFF_W, fs=9)
 
-    # Verdict
     _draw_box(ax, 5.7, 0.8, 3.8, 0.75, label, v_col, WHITE, fs=10)
     _arrow(ax, 4.5, 1.725, 5.7, 1.175)
     _arrow(ax, 7.5, 1.725, 5.7, 1.175)
