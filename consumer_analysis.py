@@ -4,8 +4,9 @@ from google import genai
 import json
 import asyncio
 DB_TABLE_NAME = "financial_due_diligence_chunks"
-GEMINI_API_KEY = "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg"
+GEMINI_API_KEY = "AQ.Ab8RN6KVewqbkCQ_dyxNcUGGllh9J4XkmRk3R5AMN1TEuLQgeg" #please do not use them as they are outdated 
 
+# ALL THE CREDENTIALS EXPOSED HERE ARE OUTDATED AND DO NOT WORK SO PLEASE REFRAIN FROM USING THEM 
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
     print("[!] Warning: Please set a valid GEMINI_API_KEY in your environment.")
@@ -38,7 +39,7 @@ DILIGENCE_QUESTIONS = ["Strategic Moat & Disruption: How does management identif
     "Logistics & Manufacturing Concentration: What geographical or physical concentration risks exist regarding the company's internal manufacturing facilities?",
     "Logistics & Manufacturing Concentration: What single-point distribution vulnerabilities exist across the outsourced third-party logistics network?",
     "Raw Material Scarcity Strategies: What are the operational parameters and minimum volume requirements of the company's long-term procurement obligations?",
-    "Raw Material Scarcity Strategies: How has supplier concentration shifted structural input cost pricing power away from the company?",
+    "Raw Material Scarcity Strategies: How has supplier concentration shifted structural input cost pricing power away from the company?", # exTRA QUESTIONS BELOW FOR THE ADVANCED VERSION OF THIS 
     # "Intellectual Property & Patent Horizons: What core proprietary patents face impending expiration timelines over the near-term forecast horizon?",
     # "Intellectual Property & Patent Horizons: What material royalty structures or third-party technology licensing agreements are critical to product manufacturing?",
     # "Vendor Switching Frictions: What operational disruptions or data migration complexities act as structural barriers to switching primary cloud providers?",
@@ -180,18 +181,15 @@ async def analysis_genrator(ticker):
         )
         print("[+] Qdrant connection established successfully.")
     except Exception as e:
-        print(f"[!] Qdrant Connection Error: {e}")
+        print(f" Qdrant Connection Error: {e}")
         return []
 
-    # Combine the pairs so we can chunk them cleanly
     paired_tasks = list(zip(DILIGENCE_QUESTIONS, RETRIEVAL_STATEMENTS))
     
-    # Configuration for Free Tier stability
-    BATCH_SIZE = 15  # 60 questions / 20 = 3 clean API calls
+    BATCH_SIZE = 15  
     final_answers = []
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-    # Process questions in chunks of 20
     for batch_idx in range(0, len(paired_tasks), BATCH_SIZE):
         batch = paired_tasks[batch_idx:batch_idx + BATCH_SIZE]
         current_batch_num = (batch_idx // BATCH_SIZE) + 1
@@ -199,12 +197,10 @@ async def analysis_genrator(ticker):
         
         print(f"\n[*] Processing Batch {current_batch_num}/{total_batches} ({len(batch)} questions)...")
 
-        # Concurrently fetch DB context only for the current batch
         async def fetch_dimension_context(index, question, statement):
             matched_points = await qdrant_vector_retrieval(qdrant_client, target_ticker, statement, limit=3)
             formatted_context = ""
             for idx, point in enumerate(matched_points):
-                # Safely extract text document and metadata from the payload
                 payload = point.payload or getattr(point, "metadata", {})
                 doc_text = payload.get("chunk", "")
                 
@@ -223,7 +219,6 @@ async def analysis_genrator(ticker):
         results = await asyncio.gather(*tasks)
         batch_context = {q: ctx for q, ctx in results}
 
-        # Build the structured prompt for this specific batch
         system_prompt = (
             "You are an elite, cynical investment banking due diligence specialist analyzing corporate SEC filings.\n"
             "Below is a subset of due diligence questions with their corresponding retrieved SEC Evidence.\n"
@@ -250,7 +245,6 @@ async def analysis_genrator(ticker):
                 config=genai.types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.0,
-                    # 1. Disable safety filters for financial/legal analysis
                     safety_settings=[
                         genai.types.SafetySetting(
                             category=genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
@@ -272,19 +266,16 @@ async def analysis_genrator(ticker):
                 ),
             )
 
-            # 2. Safely check if text exists before parsing
             if not response.text:
-                # If text is None, print the reason so you know exactly why it failed
                 finish_reason = response.candidates[0].finish_reason if response.candidates else "UNKNOWN"
                 print(f"[!] API returned empty text. Finish Reason: {finish_reason}")
                 
                 for q, _ in batch:
                     final_answers.append({q: f"Failed: API blocked response (Reason: {finish_reason})"})
-                continue # Skip parsing and move to the next batch
+                continue 
 
             response_json = json.loads(response.text)
             
-            # Map answers back to order
             for q, _ in batch:
                 if q in response_json:
                     final_answers.append({q: response_json[q]})
@@ -297,11 +288,9 @@ async def analysis_genrator(ticker):
                 final_answers.append({q: "Failed due to API execution error."})
         except Exception as e:
             print(f"[!] Gemini API Error on Batch {current_batch_num}: {e}")
-            # Append empty states so the final indexing doesn't break
             for q, _ in batch:
                 final_answers.append({q: "Failed due to API execution error."})
 
-        # Quota Safeguard: Wait for the per-minute token clock to reset before firing the next batch
         if batch_idx + BATCH_SIZE < len(paired_tasks):
             print("[*] Sleeping for 65 seconds to clear Free Tier Rate Limits (250k TPM)...")
             await asyncio.sleep(65)
