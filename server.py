@@ -3,7 +3,7 @@ from get_best_peer import get_best_peers
 from get_ratios import get_market_intel_ratios
 import asyncio
 import os
-
+ 
 mcp = FastMCP("market_intelligence")
 
 @mcp.tool()
